@@ -12,7 +12,7 @@ Valari's core never talks to a vendor. It calls **connectors**: small n8n workfl
 - For per-person actions, **always return `contact_id`**. The core joins results back by it, so order doesn't matter.
 - Don't throw on a single bad record. Use **On Error: Continue** on vendor nodes and return an `error` field on that person's result instead.
 
-The core picks connectors by workflow ID from its **Config** node, so one n8n instance can run several (for example a CRM connector and a second Google Sheets connector for product users).
+The core picks connectors by workflow ID from its **Config** node, so one n8n instance can run several (for example a CRM connector and a second Google Sheets connector for product users, or three lookup tools).
 
 ## Connector types
 
@@ -55,11 +55,26 @@ Return `{ contact_id, crm_record_id, crm_record_type, crm_record_url, task_id, e
 
 The core does the classification. Return anything that might be a signal; false positives are filtered out.
 
-### Lookup (`lookup_connector_id`)
+### Lookup (`lookup_1_connector_id` to `lookup_3_connector_id`)
 
-**`lookup_person`**: input `{ contact_id, full_name, first_name, last_name, work_email, linkedin_url, last_company, last_company_domain }`.
+Up to three lookup connectors run as a **waterfall**: the core calls them in order and only sends each one the people the earlier ones couldn't resolve, within that slot's monthly credit budget.
 
-Return `{ contact_id, found, ... }` with whatever the source knows. The agent reads it as JSON. Fields it understands best: `job_title`, `job_company_name`, `job_company_website`, `job_start_date`, `job_last_verified`, and `experience: [{ company, company_website, title, start_date, end_date, is_primary }]`. Keep it small: the whole result goes into the prompt. For "not found", return `{ contact_id, found: false, note }`.
+**`lookup_person`**: input `{ contact_id, full_name, first_name, last_name, work_email, linkedin_url, last_company, last_company_domain, last_title }`.
+
+Return one item per person:
+
+| Field | Notes |
+|---|---|
+| `contact_id` | Required. |
+| `provider` | Your tool's name, e.g. `apollo`. Shown to reps as the source. |
+| `found` | `true` when the tool knows this person. |
+| `credits_used` | Credits this call cost (usually `1` when found, `0` when not). Counted against the slot's monthly budget. |
+| `pending` | `true` if the tool answers later (see below). |
+| `note` | For misses and errors. Start with `Lookup failed:` for errors, so the person is retried next run instead of being treated as "tried". |
+| `job_title`, `job_company_name`, `job_company_website`, `job_start_date`, `job_last_verified`, `experience: [{ company, company_website, title, start_date, end_date, is_primary }]` | What the agent reads. Keep it small: it goes into the prompt. |
+| `email`, `email_status` | Optional new work email. If it matches the new company's domain, the email finder is skipped. Never sent to the agent. |
+
+**Tools that answer later** (like Clay): return `{ contact_id, provider, pending: true, credits_used }` right away. When the result is ready, have the tool POST it to the **Lookup Callback** workflow with `valari_contact_id` plus `company_name`, `company_domain`, `job_title` and optionally `job_start_date`, `linkedin_url`, `work_email`. The callback saves it and re-runs the investigation for that person.
 
 ### Email finder (`email_finder_connector_id`)
 

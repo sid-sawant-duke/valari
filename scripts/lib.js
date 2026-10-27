@@ -24,9 +24,17 @@ const TABLES = {
     name: 'valari_state',
     columns: ['contact_id', 'full_name', 'status', 'last_checked', 'next_check_on', 'current_company', 'current_title', 'new_company_domain', 'new_email', 'moved_at', 'last_engagement_alert_at', 'owner_ae', 'owner_ae_email', 'owner_ae_slack_id', 'linkedin_url', 'crm_record_url'],
   },
+  lookups: {
+    name: 'valari_lookups',
+    columns: ['contact_id', 'provider', 'found', 'pending', 'summary_json', 'looked_up_at', 'tried_json', 'signal_json'],
+  },
+  usage: {
+    name: 'valari_usage',
+    columns: ['usage_key', 'month', 'provider', 'credits_used', 'budget', 'warned'],
+  },
   cases: {
     name: 'valari_cases',
-    columns: ['case_id', 'created_at', 'contact_id', 'full_name', 'source', 'trigger', 'signal', 'outcome', 'confidence', 'old_company', 'new_company', 'new_company_domain', 'new_title', 'started_new_role', 'persona', 'icp_fit', 'bucket', 'score', 'priority', 'evidence', 'linkedin_url', 'new_email', 'crm_record_url', 'sequence_status', 'draft_opener', 'owner_ae', 'notified', 'ae_feedback'],
+    columns: ['case_id', 'created_at', 'contact_id', 'full_name', 'source', 'trigger', 'signal', 'outcome', 'confidence', 'old_company', 'new_company', 'new_company_domain', 'new_title', 'started_new_role', 'persona', 'icp_fit', 'bucket', 'score', 'priority', 'evidence', 'linkedin_url', 'lookup_source', 'new_email', 'crm_record_url', 'sequence_status', 'draft_opener', 'owner_ae', 'notified', 'ae_feedback'],
   },
 };
 
@@ -111,11 +119,11 @@ function makeBuilder(wfKey) {
         resource: 'row', operation: 'get', dataTableId: { __rl: true, mode: 'name', value: table.name }, returnAll: true,
       }, { executeOnce: true, alwaysOutputData: true, ...extra });
     },
-    upsertRows(name, position, table) {
+    upsertRows(name, position, table, key = 'contact_id') {
       return add(name, 'n8n-nodes-base.dataTable', 1.1, position, {
         resource: 'row', operation: 'upsert', dataTableId: { __rl: true, mode: 'name', value: table.name },
         matchType: 'allConditions',
-        filters: { conditions: [{ keyName: 'contact_id', condition: 'eq', keyValue: '={{ $json.contact_id }}' }] },
+        filters: { conditions: [{ keyName: key, condition: 'eq', keyValue: `={{ $json.${key} }}` }] },
         columns: { mappingMode: 'autoMapInputData', value: {}, matchingColumns: [], schema: [] },
         options: {},
       });

@@ -1,6 +1,6 @@
 # Setup
 
-This walkthrough uses a common B2B stack: **Salesforce** (CRM), **Gmail** (signals and inbox), **People Data Labs** (lookup), **Hunter** (new email), **Salesloft** (sequences) and **Slack** (alerts). Swap any of them for another connector; the steps are the same.
+This walkthrough uses a common B2B stack: **Salesforce** (CRM), **Gmail** (signals and inbox), **Apollo** then **Clay** (lookups), **Hunter** (new email), **Salesloft** (sequences) and **Slack** (alerts). Swap any of them for another connector; the steps are the same.
 
 Plan for about 45 minutes.
 
@@ -14,8 +14,8 @@ Plan for about 45 minutes.
 
 In n8n, go to **Workflows > Import from File** and import:
 
-- Everything in `workflows/core/`: Daily Run, Digest, Call Now Webhook, MCP Server.
-- The connectors you need from `workflows/connectors/`. For this stack: `crm-salesforce`, `signals-gmail`, `lookup-people-data-labs`, `email-hunter`, `sequence-salesloft`, `alert-slack`.
+- Everything in `workflows/core/`: Daily Run, Digest, Call Now Webhook, MCP Server, Lookup Callback.
+- The connectors you need from `workflows/connectors/`. For this stack: `crm-salesforce`, `signals-gmail`, `lookup-apollo`, `lookup-clay`, `email-hunter`, `sequence-salesloft`, `alert-slack`.
 
 Import connectors into the same project as the core workflows, so the core is allowed to call them.
 
@@ -37,9 +37,22 @@ On a confirmed move, the connector creates a **Contact** on the account if the n
 1. Add a Gmail credential for the inbox your reps send from.
 2. If each rep sends from their own inbox, either have them forward bounce notices to one shared inbox (a Gmail filter on `from:mailer-daemon`) or duplicate this connector once per inbox.
 
-### People Data Labs (lookup)
+### Apollo (lookup 1)
 
-Create a **Header Auth** credential on **PDL Request**: name `X-Api-Key`, value your API key.
+Create a **Header Auth** credential on **Apollo Request**: name `x-api-key`, value your Apollo API key (Apollo: **Settings > Integrations > API**). Apollo only charges when it finds someone, and Valari never requests phone numbers. When Apollo has the person's new work email, Valari uses it and skips Hunter.
+
+### Clay (lookup 2, optional)
+
+Clay is asked only about people Apollo couldn't find. It answers a few minutes later, so it needs the **Lookup Callback** workflow:
+
+1. In Clay, create a table with a **Webhook** source. Paste its URL into the Clay connector's `clay_webhook_url`. If the webhook has an auth token, add it as a Header Auth credential (name `x-clay-webhook-auth`) on **Send to Clay**.
+2. Add enrichment columns for current title, company, company domain, start date and work email (Clay's own waterfall picks the providers).
+3. Add an **HTTP API** column that POSTs `valari_contact_id`, `company_name`, `company_domain`, `job_title`, `job_start_date`, `linkedin_url` and `work_email` to the row's `callback_url`, with the header you set on the Lookup Callback's webhook.
+4. In the **Lookup Callback** workflow: add a Header Auth credential on the Webhook, paste the Daily Run's workflow ID into **Config**, publish it, and copy its Production URL into the Clay connector's `callback_url`.
+
+### People Data Labs (optional fallback)
+
+Create a **Header Auth** credential on **PDL Request**: name `X-Api-Key`, value your API key. Its free plan includes 100 lookups a month.
 
 ### Hunter (new email)
 
@@ -62,7 +75,7 @@ Open each connector and copy its workflow ID from the URL (`/workflow/<ID>`). Pa
 
 | Core workflow | Fields |
 |---|---|
-| Daily Run | `crm_connector_id`, `signals_connector_id`, `lookup_connector_id`, `email_finder_connector_id`, `sequence_connector_id`, `alert_connector_id` (plus `product_users_connector_id` if you use one) |
+| Daily Run | `crm_connector_id`, `signals_connector_id`, `lookup_1_connector_id` (Apollo), `lookup_2_connector_id` (Clay), `lookup_3_connector_id` (optional), `email_finder_connector_id`, `sequence_connector_id`, `alert_connector_id` (plus `product_users_connector_id` if you use one). Set a monthly budget for each lookup tool. |
 | Digest | `alert_connector_id` |
 | Call Now Webhook | `alert_connector_id` |
 
@@ -92,7 +105,8 @@ If some champions are product users who aren't in your CRM, export them (email, 
 
 ## 7. Switch it on
 
-Activate **Daily Run** (every morning at 7am), **Digest** (every other Monday at 9am) and **Call Now Webhook**. Schedules use your n8n instance's timezone.
+1. **Publish every connector** you set up (open it, then **Publish** at the top right). n8n only lets scheduled and webhook-started runs call published workflows; a manual test run works without this, so it is easy to miss. If you skip it, the Daily Run fails with "Workflow is not active and cannot be executed".
+2. Publish **Daily Run** (every morning at 7am), **Digest** (every other Monday at 9am) and **Call Now Webhook**. If you use Clay, publish **Lookup Callback** too. Schedules use your n8n instance's timezone.
 
 ## 8. Hook up "call now"
 

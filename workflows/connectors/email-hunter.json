@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Connector: Hunter (new work email)\n\nFinds the switcher's work email at their new company. Hunter's free plan includes a small monthly allowance of credits, and no credit is charged when no email is found.\n\n**Setup:**\n1. On **Hunter Request**, create a Header Auth credential: name `X-API-KEY`, value your Hunter API key.\n2. Copy this workflow's ID into the core Config as `email_finder_connector_id`.\n\n**Action:** find_email.\n\nContract: docs/connectors.md in the repo.",
-        "height": 520,
+        "content": "## Connector: Hunter (new work email)\n\nFinds the switcher's work email at their new company. Hunter's free plan includes a small monthly allowance of credits, and no credit is charged when no email is found.\n\n**Setup:**\n1. On **Hunter Request**, create a Header Auth credential: name `X-API-KEY`, value your Hunter API key.\n2. Copy this workflow's ID into the core Config as `email_finder_connector_id`.\n\n**Action:** find_email.\n\n**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.\n\nContract: docs/connectors.md in the repo.",
+        "height": 580,
         "width": 600,
         "color": 4
       },

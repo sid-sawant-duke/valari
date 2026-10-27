@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Connector: Salesforce (CRM)\n\nSupplies the watchlist and accounts, and records confirmed moves.\n\n**Setup:**\n1. Add a Salesforce credential to every Salesforce node.\n2. In Salesforce, create a Campaign named **Valari** and add your champions as members. Use member statuses **Buyer**, **Champion** and **User** to set each person's role. (Or edit `soql_champions` in **Config** to select contacts any way you like, then fix **Map Champions**.)\n3. Optional: set `instance_url` (e.g. https://acme.my.salesforce.com) so alerts link to new records.\n4. Copy this workflow's ID into the core **Config** as `crm_connector_id`.\n\n**Actions:** list_champions, list_accounts, record_move (creates a Contact on the account if it exists, otherwise a Lead, plus a Task for the owner).\n\nContract: docs/connectors.md in the repo.",
-        "height": 640,
+        "content": "## Connector: Salesforce (CRM)\n\nSupplies the watchlist and accounts, and records confirmed moves.\n\n**Setup:**\n1. Add a Salesforce credential to every Salesforce node.\n2. In Salesforce, create a Campaign named **Valari** and add your champions as members. Use member statuses **Buyer**, **Champion** and **User** to set each person's role. (Or edit `soql_champions` in **Config** to select contacts any way you like, then fix **Map Champions**.)\n3. Optional: set `instance_url` (e.g. https://acme.my.salesforce.com) so alerts link to new records.\n4. Copy this workflow's ID into the core **Config** as `crm_connector_id`.\n\n**Actions:** list_champions, list_accounts, record_move (creates a Contact on the account if it exists, otherwise a Lead, plus a Task for the owner).\n\n**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.\n\nContract: docs/connectors.md in the repo.",
+        "height": 700,
         "width": 600,
         "color": 4
       },

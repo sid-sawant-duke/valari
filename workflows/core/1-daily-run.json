@@ -3,9 +3,9 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Valari: Daily Run\n\nFinds past users of your product who changed jobs, confirms each move with an AI agent, scores it, and acts on it: new email, CRM record, sequence, alert.\n\n**This workflow never talks to a vendor directly.** It calls your **connectors** (small workflows, one per tool) by ID.\n\n**Setup (once):**\n1. Import the connectors you need from `workflows/connectors/` and set each one up (each has its own note).\n2. Open **Config** and paste each connector's workflow ID (from its URL: `/workflow/<ID>`). Leave optional ones blank.\n3. Fill in your product, ICP, personas and team directory.\n4. Add your AI model credential on **Chat Model** (or swap the node for any other chat model).\n5. Click **Execute workflow** to test, then toggle **Active**.\n\nRuns every morning at 7am. The MCP server can also call it for one person.\n\nTracker state lives in two n8n Data Tables, created automatically: `valari_state` and `valari_cases`.",
-        "height": 1040,
-        "width": 620,
+        "content": "## Valari: Daily Run\n\nFinds past users of your product who changed jobs, confirms each move with an AI agent, scores it, and acts on it: new email, CRM record, sequence, alert.\n\n**This workflow never talks to a vendor directly.** It calls your **connectors** (small workflows, one per tool) by ID.\n\n**Setup (once):**\n1. Import the connectors you need from `workflows/connectors/` and set each one up (each has its own note).\n2. Open **Config** and paste each connector's workflow ID (from its URL: `/workflow/<ID>`). Leave optional ones blank.\n3. Set your lookup tools in order (`lookup_1` to `lookup_3`) with a monthly credit budget for each.\n4. Fill in your product, ICP, personas and team directory.\n5. Add your AI model credential on **Chat Model** (or swap the node for any other chat model).\n6. Click **Execute workflow** to test, then toggle **Active**.\n\nRuns every morning at 7am. The MCP server and the Lookup Callback can also call it for one person.\n\nState lives in n8n Data Tables, created automatically: `valari_state`, `valari_cases`, `valari_lookups` and `valari_usage`.",
+        "height": 1800,
+        "width": 640,
         "color": 4
       },
       "id": "416d4b90-043b-4a71-a096-a3e7366ba31f",
@@ -13,15 +13,15 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        -480,
-        -420
+        -520,
+        -560
       ]
     },
     {
       "parameters": {
-        "content": "### 1. Load\nWatchlist and accounts from your CRM connector, optional product-user list, saved state, and inbox signals (bounces and \"I've left\" auto-replies).",
-        "height": 1040,
-        "width": 1480,
+        "content": "### 1. Load\nWatchlist and accounts from your CRM connector, optional product-user list, saved state, lookup cache and credit usage, and inbox signals (bounces and \"I've left\" auto-replies).",
+        "height": 1800,
+        "width": 1560,
         "color": 7
       },
       "id": "90623cd7-5ae6-4b79-ab4e-08cc586d86e4",
@@ -30,55 +30,71 @@
       "typeVersion": 1,
       "position": [
         200,
-        -420
+        -560
       ]
     },
     {
       "parameters": {
-        "content": "### 2. Investigate\nLooks each person up through the **lookup connector**, then the AI agent weighs the evidence and returns **confirmed**, **verify** or **no_change** with a draft opener.\n\nSwap **Chat Model** for OpenAI, Gemini, Mistral, Ollama or any chat model that supports tools.",
-        "height": 1040,
-        "width": 1160,
+        "content": "### 2. Look up (waterfall)\nTries up to three lookup tools in order (for example Apollo, then Clay, then People Data Labs) and stops as soon as one finds the person's current job.\n\n**Credit guardrails:** each tool has a monthly budget and pauses at it; a Slack warning goes out at 80%. Recent results are reused instead of paying again, and a tool that found nothing isn't asked about the same person again for 30 days.\n\nClay answers later: those people wait as \"pending\" and are finished by the **Lookup Callback** workflow.",
+        "height": 1800,
+        "width": 2240,
+        "color": 7
+      },
+      "id": "692c5548-be46-45b8-a78b-7d80d97b3d10",
+      "name": "Note: 2 Look up",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1780,
+        -560
+      ]
+    },
+    {
+      "parameters": {
+        "content": "### 3. Investigate\nThe AI agent weighs the evidence and returns **confirmed**, **verify** or **no_change** with a draft opener.\n\nSwap **Chat Model** for OpenAI, Gemini, Mistral, Ollama or any chat model that supports tools.",
+        "height": 1800,
+        "width": 880,
         "color": 6
       },
-      "id": "8b8f6c3d-eafd-4cae-ac1c-6ac7cc16dbe8",
-      "name": "Note: 2 Investigate",
+      "id": "1f5ae68a-683a-4b58-a4aa-948b1e3d1421",
+      "name": "Note: 3 Investigate",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1700,
-        -420
+        4020,
+        -560
       ]
     },
     {
       "parameters": {
-        "content": "### 3. Act\nFor confirmed moves: find the new work email, write the new contact and a task to the CRM, and enroll them in a sequence (the rep reviews the first email). Every step is optional: leave its connector ID blank to skip it.",
-        "height": 1040,
-        "width": 1640,
+        "content": "### 4. Act\nFor confirmed moves: find the new work email (skipped when the lookup already found it), write the new contact and a task to the CRM, and enroll them in a sequence (the rep reviews the first email). Every step is optional: leave its connector ID blank to skip it.",
+        "height": 1800,
+        "width": 1720,
         "color": 5
       },
-      "id": "ab3b88b3-9af1-416b-ac7d-4db81a823286",
-      "name": "Note: 3 Act",
+      "id": "e0e4652f-3a60-4dfe-ae06-0767d69e3da7",
+      "name": "Note: 4 Act",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        2900,
-        -420
+        4920,
+        -560
       ]
     },
     {
       "parameters": {
-        "content": "### 4. Save and alert\nLogs the case, updates state, and sends alerts through your **alert connector**.\n\nNothing is ever sent to a champion automatically.",
-        "height": 1040,
-        "width": 760,
+        "content": "### 5. Save and alert\nLogs the case, updates state, and sends alerts through your **alert connector**.\n\nNothing is ever sent to a champion automatically.",
+        "height": 1800,
+        "width": 780,
         "color": 3
       },
-      "id": "b80d1929-1f57-44c5-a61a-e9d3cbb35a5e",
-      "name": "Note: 4 Save and alert",
+      "id": "be730430-4f5b-4b80-adad-b90c42e7ad1d",
+      "name": "Note: 5 Save and alert",
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        4580,
-        -420
+        6660,
+        -560
       ]
     },
     {
@@ -143,10 +159,76 @@
               "type": "string"
             },
             {
-              "id": "b0087d00-9ce9-4c5f-a3a5-b3a87d09b669",
-              "name": "lookup_connector_id",
+              "id": "31bf9188-f4f0-44b9-a95f-3643b13403c1",
+              "name": "lookup_1_name",
+              "value": "apollo",
+              "type": "string"
+            },
+            {
+              "id": "9d637536-079c-4bfe-afc7-108ae2d4755c",
+              "name": "lookup_1_connector_id",
               "value": "",
               "type": "string"
+            },
+            {
+              "id": "8ebe7d10-87ad-446a-a678-8d502e150324",
+              "name": "lookup_1_monthly_budget",
+              "value": 500,
+              "type": "number"
+            },
+            {
+              "id": "1fd6af6c-37d3-4b5c-a86a-2c6cb041c61c",
+              "name": "lookup_2_name",
+              "value": "clay",
+              "type": "string"
+            },
+            {
+              "id": "b1c37d94-f769-45dc-aa87-1c5f5487b097",
+              "name": "lookup_2_connector_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "12644e9d-28dd-4577-a610-e50882cdb0fa",
+              "name": "lookup_2_monthly_budget",
+              "value": 200,
+              "type": "number"
+            },
+            {
+              "id": "5bffd65a-95a5-4487-a20d-bd8340d175ef",
+              "name": "lookup_3_name",
+              "value": "people_data_labs",
+              "type": "string"
+            },
+            {
+              "id": "d4375a45-a550-42f4-a1cb-9ae8e0a74b87",
+              "name": "lookup_3_connector_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "9c93348f-896b-4de3-a605-a4b856ae1abd",
+              "name": "lookup_3_monthly_budget",
+              "value": 100,
+              "type": "number"
+            },
+            {
+              "id": "5be8002f-221a-4dbf-a813-67f5d6400bd2",
+              "name": "lookup_cache_days",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "85c78e63-14f2-40f4-ac12-9bbb7372350e",
+              "name": "lookup_repeat_days",
+              "value": 30,
+              "type": "number"
+            },
+            {
+              "id": "7c2be90c-30c6-4f9f-acb8-18d8a4926e78",
+              "name": "budget_warning_percent",
+              "value": 80,
+              "type": "number"
             },
             {
               "id": "addcadd8-8bf5-4ce6-a0e1-30d52a455bac",
@@ -340,7 +422,7 @@
       "typeVersion": 1.1,
       "position": [
         240,
-        300
+        100
       ],
       "executeOnce": true
     },
@@ -436,6 +518,10 @@
               "type": "string"
             },
             {
+              "name": "lookup_source",
+              "type": "string"
+            },
+            {
               "name": "new_email",
               "type": "string"
             },
@@ -475,7 +561,109 @@
       "typeVersion": 1.1,
       "position": [
         240,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "valari_lookups",
+        "columns": {
+          "column": [
+            {
+              "name": "contact_id",
+              "type": "string"
+            },
+            {
+              "name": "provider",
+              "type": "string"
+            },
+            {
+              "name": "found",
+              "type": "string"
+            },
+            {
+              "name": "pending",
+              "type": "string"
+            },
+            {
+              "name": "summary_json",
+              "type": "string"
+            },
+            {
+              "name": "looked_up_at",
+              "type": "string"
+            },
+            {
+              "name": "tried_json",
+              "type": "string"
+            },
+            {
+              "name": "signal_json",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "db0f6ddb-93c2-4475-ac0e-159e4d7c922a",
+      "name": "Ensure Lookups Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
         500
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "valari_usage",
+        "columns": {
+          "column": [
+            {
+              "name": "usage_key",
+              "type": "string"
+            },
+            {
+              "name": "month",
+              "type": "string"
+            },
+            {
+              "name": "provider",
+              "type": "string"
+            },
+            {
+              "name": "credits_used",
+              "type": "string"
+            },
+            {
+              "name": "budget",
+              "type": "string"
+            },
+            {
+              "name": "warned",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "fbdd5283-a238-4782-a615-5060615dd4f1",
+      "name": "Ensure Usage Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        700
       ],
       "executeOnce": true
     },
@@ -642,6 +830,50 @@
     },
     {
       "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_lookups"
+        },
+        "returnAll": true
+      },
+      "id": "4fd32f70-7917-4635-a75a-17bb4adb0f49",
+      "name": "Read Lookup Cache",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1200,
+        800
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_usage"
+        },
+        "returnAll": true
+      },
+      "id": "2b303bf0-6eae-4350-ab6c-45e3baa633e2",
+      "name": "Read Usage",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        800
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
         "jsCode": "return [{ json: { action: 'get_signals' } }];"
       },
       "id": "449048e4-8978-43bd-aa5e-576218f06910",
@@ -711,7 +943,7 @@
     },
     {
       "parameters": {
-        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Merges the CRM watchlist, an optional product-user list and saved tracker state into one list of champions.\n// Pure function: tested in test/, inlined into the \"Build Watchlist\" Code node.\n\n\nfunction buildWatchlist(cfg, crmRows, productRows, stateRows) {\n  const dir = loadDirectory(cfg);\n\n  const state = new Map();\n  for (const s of stateRows || []) if (clean(s.contact_id)) state.set(clean(s.contact_id), s);\n\n  const normalize = (r, source) => {\n    const email = lower(r.work_email);\n    const id = clean(r.contact_id) || (email ? `${source}:${email}` : '');\n    if (!id) return null;\n    const names = splitName(r.full_name);\n    const owner = resolveOwner(dir, { name: r.owner_ae, email: r.owner_ae_email, slack_id: r.owner_ae_slack_id, crm_id: r.owner_crm_id, sequence_user_id: r.owner_sequence_user_id });\n    const full = clean(r.full_name) || [clean(r.first_name), clean(r.last_name)].filter(Boolean).join(' ');\n    return {\n      contact_id: id,\n      full_name: full,\n      first_name: clean(r.first_name) || names.first_name,\n      last_name: clean(r.last_name) || names.last_name,\n      work_email: email,\n      linkedin_url: clean(r.linkedin_url),\n      last_company: clean(r.last_company),\n      last_company_domain: normDomain(r.last_company_domain) || (email.includes('@') ? normDomain(email) : ''),\n      last_title: clean(r.last_title),\n      role_type: ['buyer', 'champion', 'user'].includes(lower(r.role_type)) ? lower(r.role_type) : 'user',\n      owner_ae: owner.name,\n      owner_ae_email: owner.email,\n      owner_ae_slack_id: owner.slack_id,\n      owner_crm_id: owner.crm_id,\n      owner_sequence_user_id: owner.sequence_user_id,\n      do_not_contact: truthy(r.do_not_contact) ? 'TRUE' : 'FALSE',\n      notes: clean(r.notes),\n      sweep_group: ['1', '2', '3'].includes(clean(r.sweep_group)) ? clean(r.sweep_group) : sweepGroupFor(id),\n      source,\n    };\n  };\n\n  const byId = new Map();\n  const byEmail = new Map();\n  for (const r of crmRows || []) {\n    if (!r || typeof r !== 'object') continue;\n    const c = normalize(r, 'crm');\n    if (!c || byId.has(c.contact_id)) continue;\n    byId.set(c.contact_id, c);\n    if (c.work_email) byEmail.set(c.work_email, c);\n  }\n  // Product users fill gaps on matching CRM contacts, or are added as new champions.\n  for (const r of productRows || []) {\n    if (!r || typeof r !== 'object') continue;\n    const p = normalize(r, 'product');\n    if (!p) continue;\n    const existing = p.work_email && byEmail.get(p.work_email);\n    if (existing) {\n      for (const [k, v] of Object.entries(p)) if (!existing[k] && v) existing[k] = v;\n      if (existing.source === 'crm') existing.source = 'crm+product';\n      continue;\n    }\n    if (byId.has(p.contact_id)) continue;\n    byId.set(p.contact_id, p);\n    if (p.work_email) byEmail.set(p.work_email, p);\n  }\n\n  return [...byId.values()].map((c) => {\n    const s = state.get(c.contact_id) || {};\n    return {\n      ...c,\n      status: lower(s.status) || 'active',\n      last_checked: clean(s.last_checked),\n      next_check_on: clean(s.next_check_on),\n    };\n  });\n}\n\n// Decides who to investigate on this run: inbox signals, due [verify] rechecks, failed runs, and the monthly sweep.\n// Pure function: tested in test/, inlined into the \"Find Candidates\" Code node.\n\n\nfunction findCandidates(cfg, champions, messages, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const max = Number(cfg.max_lookups_per_run) || 40;\n  const sweepDay = Number(cfg.sweep_day_of_month) || 1;\n  const toDate = (v) => {\n    const d = new Date(clean(v));\n    return clean(v) && !isNaN(d.getTime()) ? d : null;\n  };\n  const daysSince = (d) => (now.getTime() - d.getTime()) / 86400000;\n  const pack = (c, trigger, signal, evidence = '', signalDate = '') => ({ ...c, trigger, signal, signal_evidence: evidence, signal_date: signalDate });\n\n  // 1. A teammate asked for one person (from the MCP server or another workflow).\n  const requested = clean(cfg.requested_contact_id);\n  if (requested) {\n    const c = champions.find((p) => p.contact_id === requested || lower(p.work_email) === lower(requested));\n    if (!c) return { candidates: [], skipped: [`Unknown contact ${requested}`] };\n    if (truthy(c.do_not_contact)) return { candidates: [], skipped: [`${requested} is marked do_not_contact`] };\n    return { candidates: [pack(c, 'manual', 'manual', 'Requested by a teammate')], skipped: [] };\n  }\n\n  const eligible = champions.filter((c) => !truthy(c.do_not_contact) && !['moved', 'inactive'].includes(c.status));\n  const byEmail = new Map();\n  for (const c of eligible) if (c.work_email) byEmail.set(lower(c.work_email), c);\n\n  const chosen = new Map();\n  const add = (cand) => { if (!chosen.has(cand.contact_id)) chosen.set(cand.contact_id, cand); };\n\n  // 2. Inbox signals: bounces and \"no longer with the company\" auto-replies.\n  const emailRe = /[a-z0-9._%+'-]+@[a-z0-9.-]+\\.[a-z]{2,}/gi;\n  const bounceRe = /mailer-daemon|postmaster|undeliver|delivery status notification|delivery has failed|delivery failure|mail delivery failed|returned mail|not be delivered|address not found|recipient address rejected/i;\n  const leftRe = /no longer (with|at|employed|working|part of)|has left (the company|the organization|the organisation|[a-z0-9 &.,'-]{2,40})|left the company|last day (was|at)|is no longer/i;\n  for (const m of messages || []) {\n    if (!m || typeof m !== 'object') continue;\n    const subject = clean(m.subject || m.Subject);\n    const fromBlob = typeof (m.from ?? m.From) === 'string' ? (m.from ?? m.From) : JSON.stringify(m.from ?? m.From ?? '');\n    const blob = [subject, fromBlob, JSON.stringify(m.headers ?? {}), clean(m.text) || clean(m.snippet)].join('\\n');\n    const found = new Set((blob.match(emailRe) || []).map((e) => e.toLowerCase()));\n    if (!found.size) continue;\n    const isBounce = bounceRe.test(subject) || bounceRe.test(fromBlob);\n    const isLeft = !isBounce && leftRe.test(blob);\n    if (!isBounce && !isLeft) continue;\n    const fromEmails = new Set((fromBlob.match(emailRe) || []).map((e) => e.toLowerCase()));\n    const day = clean(m.date).slice(0, 10);\n    for (const email of found) {\n      const c = byEmail.get(email);\n      if (!c) continue;\n      if (isLeft && !fromEmails.has(email)) continue; // only the champion's own auto-reply counts\n      const evidence = `${isBounce ? 'Email bounced' : 'Auto-reply says they left'}${day ? ` on ${day}` : ''}: \"${subject.slice(0, 120)}\"`;\n      add(pack(c, 'signal', isBounce ? 'bounce' : 'left_autoreply', evidence, day));\n    }\n  }\n\n  // 3. [verify] cases due for a recheck.\n  for (const c of eligible) {\n    if (c.status !== 'verify') continue;\n    const due = toDate(c.next_check_on);\n    if (!due || daysSince(due) >= 0) add(pack(c, 'recheck', 'recheck', `Scheduled recheck (due ${c.next_check_on || 'now'})`));\n  }\n\n  // 4. Suspects left behind by a run that failed midway.\n  for (const c of eligible) {\n    if (c.status !== 'suspect') continue;\n    const last = toDate(c.last_checked);\n    if (!last || daysSince(last) >= 2) add(pack(c, 'retry', 'retry', 'Previous investigation did not finish'));\n  }\n\n  // 5. Monthly sweep: one third of the list each month, so everyone is checked once a quarter.\n  if (now.getUTCDate() === sweepDay) {\n    const group = String((now.getUTCMonth() % 3) + 1);\n    for (const c of eligible) {\n      if (c.status === 'active' && c.sweep_group === group) add(pack(c, 'sweep', 'sweep', `Quarterly sweep, group ${group}`));\n    }\n  }\n\n  const all = [...chosen.values()];\n  return {\n    candidates: all.slice(0, max),\n    skipped: all.slice(max).map((c) => `${c.contact_id} (over the ${max} lookups-per-run cap, picked up next run)`),\n  };\n}\n\n// ---- n8n entry ----\nconst cfg = $('Config').first().json;\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);\nconst watchlist = buildWatchlist(cfg, rows('Get Watchlist'), rows('Get Product Users'), rows('Read State'));\nconst { candidates, skipped } = findCandidates(cfg, watchlist, rows('Get Signals'));\nconsole.log(`Watchlist: ${watchlist.length} people. Investigating ${candidates.length}.`);\nif (skipped.length) console.log('Skipped this run:', skipped);\nreturn candidates.map((c) => ({ json: c }));"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Merges the CRM watchlist, an optional product-user list and saved tracker state into one list of champions.\n// Pure function: tested in test/, inlined into the \"Build Watchlist\" Code node.\n\n\nfunction buildWatchlist(cfg, crmRows, productRows, stateRows) {\n  const dir = loadDirectory(cfg);\n\n  const state = new Map();\n  for (const s of stateRows || []) if (clean(s.contact_id)) state.set(clean(s.contact_id), s);\n\n  const normalize = (r, source) => {\n    const email = lower(r.work_email);\n    const id = clean(r.contact_id) || (email ? `${source}:${email}` : '');\n    if (!id) return null;\n    const names = splitName(r.full_name);\n    const owner = resolveOwner(dir, { name: r.owner_ae, email: r.owner_ae_email, slack_id: r.owner_ae_slack_id, crm_id: r.owner_crm_id, sequence_user_id: r.owner_sequence_user_id });\n    const full = clean(r.full_name) || [clean(r.first_name), clean(r.last_name)].filter(Boolean).join(' ');\n    return {\n      contact_id: id,\n      full_name: full,\n      first_name: clean(r.first_name) || names.first_name,\n      last_name: clean(r.last_name) || names.last_name,\n      work_email: email,\n      linkedin_url: clean(r.linkedin_url),\n      last_company: clean(r.last_company),\n      last_company_domain: normDomain(r.last_company_domain) || (email.includes('@') ? normDomain(email) : ''),\n      last_title: clean(r.last_title),\n      role_type: ['buyer', 'champion', 'user'].includes(lower(r.role_type)) ? lower(r.role_type) : 'user',\n      owner_ae: owner.name,\n      owner_ae_email: owner.email,\n      owner_ae_slack_id: owner.slack_id,\n      owner_crm_id: owner.crm_id,\n      owner_sequence_user_id: owner.sequence_user_id,\n      do_not_contact: truthy(r.do_not_contact) ? 'TRUE' : 'FALSE',\n      notes: clean(r.notes),\n      sweep_group: ['1', '2', '3'].includes(clean(r.sweep_group)) ? clean(r.sweep_group) : sweepGroupFor(id),\n      source,\n    };\n  };\n\n  const byId = new Map();\n  const byEmail = new Map();\n  for (const r of crmRows || []) {\n    if (!r || typeof r !== 'object') continue;\n    const c = normalize(r, 'crm');\n    if (!c || byId.has(c.contact_id)) continue;\n    byId.set(c.contact_id, c);\n    if (c.work_email) byEmail.set(c.work_email, c);\n  }\n  // Product users fill gaps on matching CRM contacts, or are added as new champions.\n  for (const r of productRows || []) {\n    if (!r || typeof r !== 'object') continue;\n    const p = normalize(r, 'product');\n    if (!p) continue;\n    const existing = p.work_email && byEmail.get(p.work_email);\n    if (existing) {\n      for (const [k, v] of Object.entries(p)) if (!existing[k] && v) existing[k] = v;\n      if (existing.source === 'crm') existing.source = 'crm+product';\n      continue;\n    }\n    if (byId.has(p.contact_id)) continue;\n    byId.set(p.contact_id, p);\n    if (p.work_email) byEmail.set(p.work_email, p);\n  }\n\n  return [...byId.values()].map((c) => {\n    const s = state.get(c.contact_id) || {};\n    return {\n      ...c,\n      status: lower(s.status) || 'active',\n      last_checked: clean(s.last_checked),\n      next_check_on: clean(s.next_check_on),\n    };\n  });\n}\n\n// Decides who to investigate on this run: inbox signals, due [verify] rechecks, failed runs, and the monthly sweep.\n// Pure function: tested in test/, inlined into the \"Find Candidates\" Code node.\n\n\nfunction findCandidates(cfg, champions, messages, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const max = Number(cfg.max_lookups_per_run) || 40;\n  const sweepDay = Number(cfg.sweep_day_of_month) || 1;\n  const toDate = (v) => {\n    const d = new Date(clean(v));\n    return clean(v) && !isNaN(d.getTime()) ? d : null;\n  };\n  const daysSince = (d) => (now.getTime() - d.getTime()) / 86400000;\n  const pack = (c, trigger, signal, evidence = '', signalDate = '') => ({ ...c, trigger, signal, signal_evidence: evidence, signal_date: signalDate });\n\n  // 1. A teammate asked for one person (from the MCP server or another workflow).\n  const requested = clean(cfg.requested_contact_id);\n  if (requested) {\n    const c = champions.find((p) => p.contact_id === requested || lower(p.work_email) === lower(requested));\n    if (!c) return { candidates: [], skipped: [`Unknown contact ${requested}`] };\n    if (truthy(c.do_not_contact)) return { candidates: [], skipped: [`${requested} is marked do_not_contact`] };\n    return { candidates: [pack(c, 'manual', 'manual', 'Requested by a teammate')], skipped: [] };\n  }\n\n  const eligible = champions.filter((c) => !truthy(c.do_not_contact) && !['moved', 'inactive'].includes(c.status));\n  const byEmail = new Map();\n  for (const c of eligible) if (c.work_email) byEmail.set(lower(c.work_email), c);\n\n  const chosen = new Map();\n  const add = (cand) => { if (!chosen.has(cand.contact_id)) chosen.set(cand.contact_id, cand); };\n\n  // 2. Inbox signals: bounces and \"no longer with the company\" auto-replies.\n  const emailRe = /[a-z0-9._%+'-]+@[a-z0-9.-]+\\.[a-z]{2,}/gi;\n  const bounceRe = /mailer-daemon|postmaster|undeliver|delivery status notification|delivery has failed|delivery failure|mail delivery failed|returned mail|not be delivered|address not found|recipient address rejected/i;\n  const leftRe = /no longer (with|at|employed|working|part of)|has left (the company|the organization|the organisation|[a-z0-9 &.,'-]{2,40})|left the company|last day (was|at)|is no longer/i;\n  for (const m of messages || []) {\n    if (!m || typeof m !== 'object') continue;\n    const subject = clean(m.subject || m.Subject);\n    const fromBlob = typeof (m.from ?? m.From) === 'string' ? (m.from ?? m.From) : JSON.stringify(m.from ?? m.From ?? '');\n    const blob = [subject, fromBlob, JSON.stringify(m.headers ?? {}), clean(m.text) || clean(m.snippet)].join('\\n');\n    const found = new Set((blob.match(emailRe) || []).map((e) => e.toLowerCase()));\n    if (!found.size) continue;\n    const isBounce = bounceRe.test(subject) || bounceRe.test(fromBlob);\n    const isLeft = !isBounce && leftRe.test(blob);\n    if (!isBounce && !isLeft) continue;\n    const fromEmails = new Set((fromBlob.match(emailRe) || []).map((e) => e.toLowerCase()));\n    const day = clean(m.date).slice(0, 10);\n    for (const email of found) {\n      const c = byEmail.get(email);\n      if (!c) continue;\n      if (isLeft && !fromEmails.has(email)) continue; // only the champion's own auto-reply counts\n      const evidence = `${isBounce ? 'Email bounced' : 'Auto-reply says they left'}${day ? ` on ${day}` : ''}: \"${subject.slice(0, 120)}\"`;\n      add(pack(c, 'signal', isBounce ? 'bounce' : 'left_autoreply', evidence, day));\n    }\n  }\n\n  // 3. [verify] cases due for a recheck.\n  for (const c of eligible) {\n    if (c.status !== 'verify') continue;\n    const due = toDate(c.next_check_on);\n    if (!due || daysSince(due) >= 0) add(pack(c, 'recheck', 'recheck', `Scheduled recheck (due ${c.next_check_on || 'now'})`));\n  }\n\n  // 4. Suspects left behind by a run that failed midway.\n  for (const c of eligible) {\n    if (c.status !== 'suspect') continue;\n    const last = toDate(c.last_checked);\n    if (!last || daysSince(last) >= 2) add(pack(c, 'retry', 'retry', 'Previous investigation did not finish'));\n  }\n\n  // 5. Monthly sweep: one third of the list each month, so everyone is checked once a quarter.\n  if (now.getUTCDate() === sweepDay) {\n    const group = String((now.getUTCMonth() % 3) + 1);\n    for (const c of eligible) {\n      if (c.status === 'active' && c.sweep_group === group) add(pack(c, 'sweep', 'sweep', `Quarterly sweep, group ${group}`));\n    }\n  }\n\n  const all = [...chosen.values()];\n  return {\n    candidates: all.slice(0, max),\n    skipped: all.slice(max).map((c) => `${c.contact_id} (over the ${max} lookups-per-run cap, picked up next run)`),\n  };\n}\n\n// A manual run for someone whose lookup was still in progress (the Lookup Callback re-runs people this way)\n// keeps the bounce or auto-reply that started it, so \"nothing found\" still ends as [VERIFY], not \"no change\".\n// Only signals from the last lookup_repeat_days (default 30) count.\nfunction restoreSignals(cfg, candidates, cacheRows, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const maxDays = Number(cfg.lookup_repeat_days ?? 30);\n  return (candidates || []).map((c) => {\n    if (c.trigger !== 'manual') return c;\n    const row = (cacheRows || []).find((r) => r && clean(r.contact_id) === c.contact_id);\n    const saved = row ? parseJson(row.signal_json, null) : null;\n    if (!saved || !['signal', 'retry', 'recheck'].includes(saved.trigger)) return c;\n    const at = new Date(clean(saved.signal_date) || clean(saved.saved_at));\n    if (isNaN(at.getTime()) || (now - at) / 86400000 > maxDays) return c;\n    return { ...c, trigger: saved.trigger, signal: saved.signal, signal_evidence: saved.signal_evidence, signal_date: saved.signal_date, requested: true };\n  });\n}\n\n// ---- n8n entry ----\nconst cfg = $('Config').first().json;\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);\nconst watchlist = buildWatchlist(cfg, rows('Get Watchlist'), rows('Get Product Users'), rows('Read State'));\nconst found = findCandidates(cfg, watchlist, rows('Get Signals'));\nconst candidates = restoreSignals(cfg, found.candidates, rows('Read Lookup Cache'));\nconst skipped = found.skipped;\nconsole.log(`Watchlist: ${watchlist.length} people. Investigating ${candidates.length}.`);\nif (skipped.length) console.log('Skipped this run:', skipped);\nreturn candidates.map((c) => ({ json: c }));"
       },
       "id": "39984c52-97d6-4dc1-ab45-827b7a35969b",
       "name": "Find Candidates",
@@ -732,7 +964,7 @@
       "typeVersion": 2,
       "position": [
         1920,
-        100
+        -40
       ]
     },
     {
@@ -768,15 +1000,15 @@
       "typeVersion": 1.1,
       "position": [
         2160,
-        100
+        -40
       ]
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map((i) => ({ json: {\n  action: 'lookup_person',\n  contact_id: i.json.contact_id,\n  full_name: i.json.full_name,\n  first_name: i.json.first_name,\n  last_name: i.json.last_name,\n  work_email: i.json.work_email,\n  linkedin_url: i.json.linkedin_url,\n  last_company: i.json.last_company,\n  last_company_domain: i.json.last_company_domain,\n} }));"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Lookup waterfall: try up to three lookup tools in order, stop as soon as one gives a good answer,\n// and never spend more than each tool's monthly budget.\n// Pure functions: tested in test/, inlined into the core's lookup Code nodes.\n\n\n// Slot i (1, 2 or 3) as configured in Config: lookup_<i>_name, lookup_<i>_connector_id, lookup_<i>_monthly_budget.\n// A blank budget means no limit. 0 switches the tool off.\nfunction lookupSlot(cfg, i) {\n  const id = clean(cfg[`lookup_${i}_connector_id`]);\n  if (!id) return null;\n  const b = clean(cfg[`lookup_${i}_monthly_budget`]);\n  return { index: i, name: lower(cfg[`lookup_${i}_name`]) || `lookup_${i}`, connector_id: id, budget: b === '' ? null : Number(b) };\n}\n\nconst monthKey = (now) => now.toISOString().slice(0, 7);\nconst daysAgo = (iso, now) => {\n  const d = new Date(clean(iso));\n  return isNaN(d.getTime()) ? Infinity : (now - d) / 86400000;\n};\n\nfunction usageFor(usageRows, provider, now) {\n  const key = `${monthKey(now)}:${provider}`;\n  const row = (usageRows || []).find((u) => clean(u.usage_key) === key);\n  return { key, used: row ? Number(row.credits_used) || 0 : 0, warned: row ? lower(row.warned) === 'true' : false };\n}\n\nfunction sameCompany(c, s) {\n  const d1 = normDomain(c.last_company_domain);\n  const d2 = normDomain(s.job_company_website);\n  if (d1 && d2) return d1 === d2;\n  return !!lower(s.job_company_name) && lower(s.job_company_name) === lower(c.last_company);\n}\n\n// A result answers the question if it shows a current job, and, when we have a \"they left\" signal,\n// it isn't just the old job from data collected before that signal.\nfunction isResolved(c, s) {\n  if (!s || !s.found) return false;\n  if (!clean(s.job_company_name) && !(Array.isArray(s.experience) && s.experience.length)) return false;\n  if (['signal', 'retry', 'recheck'].includes(c.trigger) && sameCompany(c, s)) {\n    const verified = new Date(clean(s.job_last_verified) || clean(s.job_last_changed));\n    const signal = new Date(clean(c.signal_date));\n    if (isNaN(verified.getTime()) || isNaN(signal.getTime()) || verified < signal) return false;\n  }\n  return true;\n}\n\nfunction cacheIndex(cacheRows) {\n  const m = new Map();\n  for (const r of cacheRows || []) {\n    if (!r || !clean(r.contact_id)) continue;\n    m.set(clean(r.contact_id), { ...r, summary: parseJson(r.summary_json, null), tried: parseJson(r.tried_json, {}) || {} });\n  }\n  return m;\n}\n\nfunction freshCached(cfg, c, row, now) {\n  const days = Number(cfg.lookup_cache_days ?? 14);\n  if (!row || !row.summary || daysAgo(row.looked_up_at, now) > days) return null;\n  return isResolved(c, row.summary) ? row.summary : null;\n}\n\n// Who should slot i look up, within its budget?\nfunction planSlot(cfg, i, candidates, cacheRows, usageRows, priorResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const slot = lookupSlot(cfg, i);\n  const noop = { requests: [{ action: 'noop' }], budget_skipped: [], slot };\n  if (!slot || slot.budget === 0) return noop;\n  const repeatDays = Number(cfg.lookup_repeat_days ?? 30);\n  const cache = cacheIndex(cacheRows);\n  const prior = new Map();\n  for (const r of priorResults || []) if (r && clean(r.contact_id)) (prior.get(clean(r.contact_id)) || prior.set(clean(r.contact_id), []).get(clean(r.contact_id))).push(r);\n\n  const wanted = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    if (freshCached(cfg, c, row, now)) continue;\n    const earlier = prior.get(c.contact_id) || [];\n    if (earlier.some((r) => r.pending === true || lower(r.pending) === 'true' || isResolved(c, r))) continue;\n    // Applies to manual runs too: the Lookup Callback re-runs people manually, and asking the same tool\n    // again right away would loop (and spend a credit each time).\n    const triedAt = row && row.tried ? row.tried[slot.name] : '';\n    if (daysAgo(triedAt, now) < repeatDays) continue;\n    wanted.push({\n      action: 'lookup_person',\n      contact_id: c.contact_id,\n      full_name: c.full_name, first_name: c.first_name, last_name: c.last_name,\n      work_email: c.work_email, linkedin_url: c.linkedin_url,\n      last_company: c.last_company, last_company_domain: c.last_company_domain, last_title: c.last_title,\n    });\n  }\n  const used = usageFor(usageRows, slot.name, now).used;\n  const remaining = slot.budget === null ? Infinity : Math.max(0, slot.budget - used);\n  const requests = wanted.slice(0, remaining);\n  const skipped = wanted.slice(requests.length).map((r) => r.contact_id);\n  return { requests: requests.length ? requests : noop.requests, budget_skipped: skipped, slot };\n}\n\n// After all slots ran: pick each person's answer, and work out cache, usage and budget warnings.\nfunction collectLookups(cfg, candidates, cacheRows, usageRows, slotResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const nowIso = now.toISOString();\n  const warnAt = (Number(cfg.budget_warning_percent ?? 80) || 80) / 100;\n  const cache = cacheIndex(cacheRows);\n  const slots = [1, 2, 3].map((i) => lookupSlot(cfg, i));\n\n  // Results per person, in slot order, each tagged with its provider.\n  const byPerson = new Map();\n  const credits = {};\n  (slotResults || []).forEach((rows, idx) => {\n    const slot = slots[idx];\n    for (const r of rows || []) {\n      if (!r || !clean(r.contact_id)) continue;\n      const provider = lower(r.provider) || (slot && slot.name) || `lookup_${idx + 1}`;\n      const res = { ...r, provider };\n      (byPerson.get(res.contact_id) || byPerson.set(res.contact_id, []).get(res.contact_id)).push(res);\n      credits[provider] = (credits[provider] || 0) + (Number(r.credits_used) || 0);\n    }\n  });\n\n  const briefs = [];\n  const pending = [];\n  const cacheOut = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    const results = byPerson.get(c.contact_id) || [];\n    const isPending = (r) => r.pending === true || lower(r.pending) === 'true';\n    const resolved = results.find((r) => isResolved(c, r));\n    const cached = resolved ? null : freshCached(cfg, c, row, now);\n    let chosen = resolved || cached;\n    const waiting = !chosen && results.some(isPending);\n\n    if (results.length) {\n      // A failed call (bad key, outage) doesn't count as \"tried\", so it is retried next run.\n      const tried = { ...(row ? row.tried : {}) };\n      for (const r of results) if (!/^Lookup failed/i.test(clean(r.note))) tried[r.provider] = nowIso;\n      const keep = resolved || results.find((r) => !isPending(r) && r.found) || results.find((r) => !isPending(r)) || results[0];\n      const { contact_id, credits_used, pending: p, action, ...summary } = keep;\n      cacheOut.push({\n        contact_id: c.contact_id,\n        provider: keep.provider,\n        found: keep.found ? 'TRUE' : 'FALSE',\n        pending: waiting ? 'TRUE' : 'FALSE',\n        summary_json: JSON.stringify(summary),\n        looked_up_at: nowIso,\n        tried_json: JSON.stringify(tried),\n        // Remember what started this investigation, so a later re-run (after Clay answers) keeps it.\n        signal_json: ['signal', 'retry', 'recheck'].includes(c.trigger)\n          ? JSON.stringify({ trigger: c.trigger, signal: c.signal, signal_evidence: c.signal_evidence, signal_date: c.signal_date, saved_at: nowIso })\n          : clean(row && row.signal_json),\n      });\n    }\n\n    if (waiting) { pending.push(c.contact_id); continue; }\n    if (!chosen) {\n      // Nothing resolved it: give the agent the best we have, so it can say [VERIFY] with evidence.\n      chosen = results.find((r) => !isPending(r) && r.found)\n        || results.find((r) => !isPending(r))\n        || (row && row.summary)\n        || { found: false, note: 'No lookup tool returned a result (none configured, all over budget, or tried recently).' };\n    }\n    const { contact_id, credits_used, pending: p, action, email, email_status, ...forAgent } = chosen;\n    const emailOk = clean(email) && !/not_unlocked|@domain\\.com$/i.test(email) && normDomain(email) === normDomain(chosen.job_company_website);\n    briefs.push({\n      ...c,\n      lookup_source: clean(chosen.provider) || (cached ? clean(row.provider) : ''),\n      lookup_email: emailOk ? lower(email) : '',\n      lookup_email_status: emailOk ? lower(email_status) : '',\n      lookup_json: JSON.stringify(forAgent, null, 1),\n    });\n  }\n\n  // Usage and budget warnings.\n  const usageOut = [];\n  const alerts = [];\n  for (const [provider, spent] of Object.entries(credits)) {\n    if (!spent) continue;\n    const slot = slots.find((s) => s && s.name === provider);\n    const budget = slot ? slot.budget : null;\n    const u = usageFor(usageRows, provider, now);\n    const total = u.used + spent;\n    let warned = u.warned;\n    if (budget && !warned && total >= budget * warnAt) {\n      warned = true;\n      const pct = Math.round((total / budget) * 100);\n      const text = `${provider} has used ${total} of its ${budget} lookup credits this month (${pct}%).${total >= budget ? ' It is now paused until next month; Valari will use the next tool in line.' : ' Valari will pause it at the limit and use the next tool in line.'}`;\n      alerts.push({\n        action: 'alert', kind: 'budget', contact_id: '',\n        subject: `Valari: ${provider} lookup budget at ${pct}%`,\n        text_md: `:warning: *Lookup budget:* ${text}`,\n        html: `<p><b>Lookup budget:</b> ${text}</p>`,\n        text_plain: `Lookup budget: ${text}`,\n        to_name: '', to_email: '', to_slack_id: '', cc_name: '', cc_email: '', cc_slack_id: '', priority: '',\n      });\n    }\n    usageOut.push({ usage_key: u.key, month: monthKey(now), provider, credits_used: String(total), budget: budget === null ? '' : String(budget), warned: warned ? 'TRUE' : 'FALSE' });\n  }\n\n  return { briefs, pending, cache_rows: cacheOut, usage_rows: usageOut, alerts };\n}\n\n// ---- n8n entry ----\n// Who still needs looking up after the earlier tools, within this tool's monthly budget.\nconst cfg = $('Config').first().json;\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);\nconst candidates = $('Find Candidates').all().map((i) => i.json);\nconst prior = [];\nconst { requests, budget_skipped, slot } = planSlot(cfg, 1, candidates, rows('Read Lookup Cache'), rows('Read Usage'), prior);\nif (slot && budget_skipped.length) console.log(`${slot.name} is at its monthly budget. Skipped:`, budget_skipped);\nreturn requests.map((json) => ({ json }));"
       },
-      "id": "bf067dbe-6b82-4f76-a6ec-a76682d75a2c",
-      "name": "Lookup Requests",
+      "id": "88e130ac-4cd2-4c9b-aa30-9ecfa2a2437f",
+      "name": "Lookup 1 Requests",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -786,31 +1018,65 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "00343c89-b31e-498d-ab28-7c4bfe669fba",
+              "leftValue": "={{ $json.action !== 'noop' && !!$('Config').first().json.lookup_1_connector_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "805f6e82-4bc3-4693-a2a4-2599035baede",
+      "name": "Use Lookup 1?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2160,
+        620
+      ]
+    },
+    {
+      "parameters": {
         "source": "database",
         "workflowId": {
           "__rl": true,
           "mode": "id",
-          "value": "={{ $('Config').first().json.lookup_connector_id }}"
+          "value": "={{ $('Config').first().json.lookup_1_connector_id }}"
         },
         "mode": "once",
         "options": {}
       },
-      "id": "12fe57d3-1ea7-425e-ae72-4d32e95bd9da",
-      "name": "Look Up People",
+      "id": "b62f8069-356e-4a75-a590-7551d648d15e",
+      "name": "Look Up 1",
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
         2160,
-        460
+        300
       ],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// Joins each candidate with their lookup result (connectors return contact_id).\nconst results = new Map($input.all().map((i) => i.json).filter((j) => j && j.contact_id).map((j) => [String(j.contact_id), j]));\nreturn $('Find Candidates').all().map((i) => {\n  const c = i.json;\n  const r = results.get(String(c.contact_id)) || { found: false, note: 'Lookup connector returned nothing for this person.' };\n  const { contact_id, ...lookup } = r;\n  return { json: { ...c, lookup_json: JSON.stringify(lookup, null, 1) } };\n});"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Lookup waterfall: try up to three lookup tools in order, stop as soon as one gives a good answer,\n// and never spend more than each tool's monthly budget.\n// Pure functions: tested in test/, inlined into the core's lookup Code nodes.\n\n\n// Slot i (1, 2 or 3) as configured in Config: lookup_<i>_name, lookup_<i>_connector_id, lookup_<i>_monthly_budget.\n// A blank budget means no limit. 0 switches the tool off.\nfunction lookupSlot(cfg, i) {\n  const id = clean(cfg[`lookup_${i}_connector_id`]);\n  if (!id) return null;\n  const b = clean(cfg[`lookup_${i}_monthly_budget`]);\n  return { index: i, name: lower(cfg[`lookup_${i}_name`]) || `lookup_${i}`, connector_id: id, budget: b === '' ? null : Number(b) };\n}\n\nconst monthKey = (now) => now.toISOString().slice(0, 7);\nconst daysAgo = (iso, now) => {\n  const d = new Date(clean(iso));\n  return isNaN(d.getTime()) ? Infinity : (now - d) / 86400000;\n};\n\nfunction usageFor(usageRows, provider, now) {\n  const key = `${monthKey(now)}:${provider}`;\n  const row = (usageRows || []).find((u) => clean(u.usage_key) === key);\n  return { key, used: row ? Number(row.credits_used) || 0 : 0, warned: row ? lower(row.warned) === 'true' : false };\n}\n\nfunction sameCompany(c, s) {\n  const d1 = normDomain(c.last_company_domain);\n  const d2 = normDomain(s.job_company_website);\n  if (d1 && d2) return d1 === d2;\n  return !!lower(s.job_company_name) && lower(s.job_company_name) === lower(c.last_company);\n}\n\n// A result answers the question if it shows a current job, and, when we have a \"they left\" signal,\n// it isn't just the old job from data collected before that signal.\nfunction isResolved(c, s) {\n  if (!s || !s.found) return false;\n  if (!clean(s.job_company_name) && !(Array.isArray(s.experience) && s.experience.length)) return false;\n  if (['signal', 'retry', 'recheck'].includes(c.trigger) && sameCompany(c, s)) {\n    const verified = new Date(clean(s.job_last_verified) || clean(s.job_last_changed));\n    const signal = new Date(clean(c.signal_date));\n    if (isNaN(verified.getTime()) || isNaN(signal.getTime()) || verified < signal) return false;\n  }\n  return true;\n}\n\nfunction cacheIndex(cacheRows) {\n  const m = new Map();\n  for (const r of cacheRows || []) {\n    if (!r || !clean(r.contact_id)) continue;\n    m.set(clean(r.contact_id), { ...r, summary: parseJson(r.summary_json, null), tried: parseJson(r.tried_json, {}) || {} });\n  }\n  return m;\n}\n\nfunction freshCached(cfg, c, row, now) {\n  const days = Number(cfg.lookup_cache_days ?? 14);\n  if (!row || !row.summary || daysAgo(row.looked_up_at, now) > days) return null;\n  return isResolved(c, row.summary) ? row.summary : null;\n}\n\n// Who should slot i look up, within its budget?\nfunction planSlot(cfg, i, candidates, cacheRows, usageRows, priorResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const slot = lookupSlot(cfg, i);\n  const noop = { requests: [{ action: 'noop' }], budget_skipped: [], slot };\n  if (!slot || slot.budget === 0) return noop;\n  const repeatDays = Number(cfg.lookup_repeat_days ?? 30);\n  const cache = cacheIndex(cacheRows);\n  const prior = new Map();\n  for (const r of priorResults || []) if (r && clean(r.contact_id)) (prior.get(clean(r.contact_id)) || prior.set(clean(r.contact_id), []).get(clean(r.contact_id))).push(r);\n\n  const wanted = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    if (freshCached(cfg, c, row, now)) continue;\n    const earlier = prior.get(c.contact_id) || [];\n    if (earlier.some((r) => r.pending === true || lower(r.pending) === 'true' || isResolved(c, r))) continue;\n    // Applies to manual runs too: the Lookup Callback re-runs people manually, and asking the same tool\n    // again right away would loop (and spend a credit each time).\n    const triedAt = row && row.tried ? row.tried[slot.name] : '';\n    if (daysAgo(triedAt, now) < repeatDays) continue;\n    wanted.push({\n      action: 'lookup_person',\n      contact_id: c.contact_id,\n      full_name: c.full_name, first_name: c.first_name, last_name: c.last_name,\n      work_email: c.work_email, linkedin_url: c.linkedin_url,\n      last_company: c.last_company, last_company_domain: c.last_company_domain, last_title: c.last_title,\n    });\n  }\n  const used = usageFor(usageRows, slot.name, now).used;\n  const remaining = slot.budget === null ? Infinity : Math.max(0, slot.budget - used);\n  const requests = wanted.slice(0, remaining);\n  const skipped = wanted.slice(requests.length).map((r) => r.contact_id);\n  return { requests: requests.length ? requests : noop.requests, budget_skipped: skipped, slot };\n}\n\n// After all slots ran: pick each person's answer, and work out cache, usage and budget warnings.\nfunction collectLookups(cfg, candidates, cacheRows, usageRows, slotResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const nowIso = now.toISOString();\n  const warnAt = (Number(cfg.budget_warning_percent ?? 80) || 80) / 100;\n  const cache = cacheIndex(cacheRows);\n  const slots = [1, 2, 3].map((i) => lookupSlot(cfg, i));\n\n  // Results per person, in slot order, each tagged with its provider.\n  const byPerson = new Map();\n  const credits = {};\n  (slotResults || []).forEach((rows, idx) => {\n    const slot = slots[idx];\n    for (const r of rows || []) {\n      if (!r || !clean(r.contact_id)) continue;\n      const provider = lower(r.provider) || (slot && slot.name) || `lookup_${idx + 1}`;\n      const res = { ...r, provider };\n      (byPerson.get(res.contact_id) || byPerson.set(res.contact_id, []).get(res.contact_id)).push(res);\n      credits[provider] = (credits[provider] || 0) + (Number(r.credits_used) || 0);\n    }\n  });\n\n  const briefs = [];\n  const pending = [];\n  const cacheOut = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    const results = byPerson.get(c.contact_id) || [];\n    const isPending = (r) => r.pending === true || lower(r.pending) === 'true';\n    const resolved = results.find((r) => isResolved(c, r));\n    const cached = resolved ? null : freshCached(cfg, c, row, now);\n    let chosen = resolved || cached;\n    const waiting = !chosen && results.some(isPending);\n\n    if (results.length) {\n      // A failed call (bad key, outage) doesn't count as \"tried\", so it is retried next run.\n      const tried = { ...(row ? row.tried : {}) };\n      for (const r of results) if (!/^Lookup failed/i.test(clean(r.note))) tried[r.provider] = nowIso;\n      const keep = resolved || results.find((r) => !isPending(r) && r.found) || results.find((r) => !isPending(r)) || results[0];\n      const { contact_id, credits_used, pending: p, action, ...summary } = keep;\n      cacheOut.push({\n        contact_id: c.contact_id,\n        provider: keep.provider,\n        found: keep.found ? 'TRUE' : 'FALSE',\n        pending: waiting ? 'TRUE' : 'FALSE',\n        summary_json: JSON.stringify(summary),\n        looked_up_at: nowIso,\n        tried_json: JSON.stringify(tried),\n        // Remember what started this investigation, so a later re-run (after Clay answers) keeps it.\n        signal_json: ['signal', 'retry', 'recheck'].includes(c.trigger)\n          ? JSON.stringify({ trigger: c.trigger, signal: c.signal, signal_evidence: c.signal_evidence, signal_date: c.signal_date, saved_at: nowIso })\n          : clean(row && row.signal_json),\n      });\n    }\n\n    if (waiting) { pending.push(c.contact_id); continue; }\n    if (!chosen) {\n      // Nothing resolved it: give the agent the best we have, so it can say [VERIFY] with evidence.\n      chosen = results.find((r) => !isPending(r) && r.found)\n        || results.find((r) => !isPending(r))\n        || (row && row.summary)\n        || { found: false, note: 'No lookup tool returned a result (none configured, all over budget, or tried recently).' };\n    }\n    const { contact_id, credits_used, pending: p, action, email, email_status, ...forAgent } = chosen;\n    const emailOk = clean(email) && !/not_unlocked|@domain\\.com$/i.test(email) && normDomain(email) === normDomain(chosen.job_company_website);\n    briefs.push({\n      ...c,\n      lookup_source: clean(chosen.provider) || (cached ? clean(row.provider) : ''),\n      lookup_email: emailOk ? lower(email) : '',\n      lookup_email_status: emailOk ? lower(email_status) : '',\n      lookup_json: JSON.stringify(forAgent, null, 1),\n    });\n  }\n\n  // Usage and budget warnings.\n  const usageOut = [];\n  const alerts = [];\n  for (const [provider, spent] of Object.entries(credits)) {\n    if (!spent) continue;\n    const slot = slots.find((s) => s && s.name === provider);\n    const budget = slot ? slot.budget : null;\n    const u = usageFor(usageRows, provider, now);\n    const total = u.used + spent;\n    let warned = u.warned;\n    if (budget && !warned && total >= budget * warnAt) {\n      warned = true;\n      const pct = Math.round((total / budget) * 100);\n      const text = `${provider} has used ${total} of its ${budget} lookup credits this month (${pct}%).${total >= budget ? ' It is now paused until next month; Valari will use the next tool in line.' : ' Valari will pause it at the limit and use the next tool in line.'}`;\n      alerts.push({\n        action: 'alert', kind: 'budget', contact_id: '',\n        subject: `Valari: ${provider} lookup budget at ${pct}%`,\n        text_md: `:warning: *Lookup budget:* ${text}`,\n        html: `<p><b>Lookup budget:</b> ${text}</p>`,\n        text_plain: `Lookup budget: ${text}`,\n        to_name: '', to_email: '', to_slack_id: '', cc_name: '', cc_email: '', cc_slack_id: '', priority: '',\n      });\n    }\n    usageOut.push({ usage_key: u.key, month: monthKey(now), provider, credits_used: String(total), budget: budget === null ? '' : String(budget), warned: warned ? 'TRUE' : 'FALSE' });\n  }\n\n  return { briefs, pending, cache_rows: cacheOut, usage_rows: usageOut, alerts };\n}\n\n// ---- n8n entry ----\n// Who still needs looking up after the earlier tools, within this tool's monthly budget.\nconst cfg = $('Config').first().json;\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);\nconst candidates = $('Find Candidates').all().map((i) => i.json);\nconst prior = [...rows('Look Up 1')];\nconst { requests, budget_skipped, slot } = planSlot(cfg, 2, candidates, rows('Read Lookup Cache'), rows('Read Usage'), prior);\nif (slot && budget_skipped.length) console.log(`${slot.name} is at its monthly budget. Skipped:`, budget_skipped);\nreturn requests.map((json) => ({ json }));"
       },
-      "id": "3fed401b-3a49-4343-a498-075010db1022",
-      "name": "Prepare Brief",
+      "id": "c185cea9-c4d8-4bae-a6f9-f7694079766c",
+      "name": "Lookup 2 Requests",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
@@ -820,11 +1086,341 @@
     },
     {
       "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "def1e738-90e7-460e-a1bf-58d85f498315",
+              "leftValue": "={{ $json.action !== 'noop' && !!$('Config').first().json.lookup_2_connector_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "6eee26f1-5037-41f4-ae8d-c0c09f141ba0",
+      "name": "Use Lookup 2?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2640,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.lookup_2_connector_id }}"
+        },
+        "mode": "once",
+        "options": {}
+      },
+      "id": "a2aec9cc-c6b6-412f-ac8d-a26bba008bab",
+      "name": "Look Up 2",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        2640,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Lookup waterfall: try up to three lookup tools in order, stop as soon as one gives a good answer,\n// and never spend more than each tool's monthly budget.\n// Pure functions: tested in test/, inlined into the core's lookup Code nodes.\n\n\n// Slot i (1, 2 or 3) as configured in Config: lookup_<i>_name, lookup_<i>_connector_id, lookup_<i>_monthly_budget.\n// A blank budget means no limit. 0 switches the tool off.\nfunction lookupSlot(cfg, i) {\n  const id = clean(cfg[`lookup_${i}_connector_id`]);\n  if (!id) return null;\n  const b = clean(cfg[`lookup_${i}_monthly_budget`]);\n  return { index: i, name: lower(cfg[`lookup_${i}_name`]) || `lookup_${i}`, connector_id: id, budget: b === '' ? null : Number(b) };\n}\n\nconst monthKey = (now) => now.toISOString().slice(0, 7);\nconst daysAgo = (iso, now) => {\n  const d = new Date(clean(iso));\n  return isNaN(d.getTime()) ? Infinity : (now - d) / 86400000;\n};\n\nfunction usageFor(usageRows, provider, now) {\n  const key = `${monthKey(now)}:${provider}`;\n  const row = (usageRows || []).find((u) => clean(u.usage_key) === key);\n  return { key, used: row ? Number(row.credits_used) || 0 : 0, warned: row ? lower(row.warned) === 'true' : false };\n}\n\nfunction sameCompany(c, s) {\n  const d1 = normDomain(c.last_company_domain);\n  const d2 = normDomain(s.job_company_website);\n  if (d1 && d2) return d1 === d2;\n  return !!lower(s.job_company_name) && lower(s.job_company_name) === lower(c.last_company);\n}\n\n// A result answers the question if it shows a current job, and, when we have a \"they left\" signal,\n// it isn't just the old job from data collected before that signal.\nfunction isResolved(c, s) {\n  if (!s || !s.found) return false;\n  if (!clean(s.job_company_name) && !(Array.isArray(s.experience) && s.experience.length)) return false;\n  if (['signal', 'retry', 'recheck'].includes(c.trigger) && sameCompany(c, s)) {\n    const verified = new Date(clean(s.job_last_verified) || clean(s.job_last_changed));\n    const signal = new Date(clean(c.signal_date));\n    if (isNaN(verified.getTime()) || isNaN(signal.getTime()) || verified < signal) return false;\n  }\n  return true;\n}\n\nfunction cacheIndex(cacheRows) {\n  const m = new Map();\n  for (const r of cacheRows || []) {\n    if (!r || !clean(r.contact_id)) continue;\n    m.set(clean(r.contact_id), { ...r, summary: parseJson(r.summary_json, null), tried: parseJson(r.tried_json, {}) || {} });\n  }\n  return m;\n}\n\nfunction freshCached(cfg, c, row, now) {\n  const days = Number(cfg.lookup_cache_days ?? 14);\n  if (!row || !row.summary || daysAgo(row.looked_up_at, now) > days) return null;\n  return isResolved(c, row.summary) ? row.summary : null;\n}\n\n// Who should slot i look up, within its budget?\nfunction planSlot(cfg, i, candidates, cacheRows, usageRows, priorResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const slot = lookupSlot(cfg, i);\n  const noop = { requests: [{ action: 'noop' }], budget_skipped: [], slot };\n  if (!slot || slot.budget === 0) return noop;\n  const repeatDays = Number(cfg.lookup_repeat_days ?? 30);\n  const cache = cacheIndex(cacheRows);\n  const prior = new Map();\n  for (const r of priorResults || []) if (r && clean(r.contact_id)) (prior.get(clean(r.contact_id)) || prior.set(clean(r.contact_id), []).get(clean(r.contact_id))).push(r);\n\n  const wanted = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    if (freshCached(cfg, c, row, now)) continue;\n    const earlier = prior.get(c.contact_id) || [];\n    if (earlier.some((r) => r.pending === true || lower(r.pending) === 'true' || isResolved(c, r))) continue;\n    // Applies to manual runs too: the Lookup Callback re-runs people manually, and asking the same tool\n    // again right away would loop (and spend a credit each time).\n    const triedAt = row && row.tried ? row.tried[slot.name] : '';\n    if (daysAgo(triedAt, now) < repeatDays) continue;\n    wanted.push({\n      action: 'lookup_person',\n      contact_id: c.contact_id,\n      full_name: c.full_name, first_name: c.first_name, last_name: c.last_name,\n      work_email: c.work_email, linkedin_url: c.linkedin_url,\n      last_company: c.last_company, last_company_domain: c.last_company_domain, last_title: c.last_title,\n    });\n  }\n  const used = usageFor(usageRows, slot.name, now).used;\n  const remaining = slot.budget === null ? Infinity : Math.max(0, slot.budget - used);\n  const requests = wanted.slice(0, remaining);\n  const skipped = wanted.slice(requests.length).map((r) => r.contact_id);\n  return { requests: requests.length ? requests : noop.requests, budget_skipped: skipped, slot };\n}\n\n// After all slots ran: pick each person's answer, and work out cache, usage and budget warnings.\nfunction collectLookups(cfg, candidates, cacheRows, usageRows, slotResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const nowIso = now.toISOString();\n  const warnAt = (Number(cfg.budget_warning_percent ?? 80) || 80) / 100;\n  const cache = cacheIndex(cacheRows);\n  const slots = [1, 2, 3].map((i) => lookupSlot(cfg, i));\n\n  // Results per person, in slot order, each tagged with its provider.\n  const byPerson = new Map();\n  const credits = {};\n  (slotResults || []).forEach((rows, idx) => {\n    const slot = slots[idx];\n    for (const r of rows || []) {\n      if (!r || !clean(r.contact_id)) continue;\n      const provider = lower(r.provider) || (slot && slot.name) || `lookup_${idx + 1}`;\n      const res = { ...r, provider };\n      (byPerson.get(res.contact_id) || byPerson.set(res.contact_id, []).get(res.contact_id)).push(res);\n      credits[provider] = (credits[provider] || 0) + (Number(r.credits_used) || 0);\n    }\n  });\n\n  const briefs = [];\n  const pending = [];\n  const cacheOut = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    const results = byPerson.get(c.contact_id) || [];\n    const isPending = (r) => r.pending === true || lower(r.pending) === 'true';\n    const resolved = results.find((r) => isResolved(c, r));\n    const cached = resolved ? null : freshCached(cfg, c, row, now);\n    let chosen = resolved || cached;\n    const waiting = !chosen && results.some(isPending);\n\n    if (results.length) {\n      // A failed call (bad key, outage) doesn't count as \"tried\", so it is retried next run.\n      const tried = { ...(row ? row.tried : {}) };\n      for (const r of results) if (!/^Lookup failed/i.test(clean(r.note))) tried[r.provider] = nowIso;\n      const keep = resolved || results.find((r) => !isPending(r) && r.found) || results.find((r) => !isPending(r)) || results[0];\n      const { contact_id, credits_used, pending: p, action, ...summary } = keep;\n      cacheOut.push({\n        contact_id: c.contact_id,\n        provider: keep.provider,\n        found: keep.found ? 'TRUE' : 'FALSE',\n        pending: waiting ? 'TRUE' : 'FALSE',\n        summary_json: JSON.stringify(summary),\n        looked_up_at: nowIso,\n        tried_json: JSON.stringify(tried),\n        // Remember what started this investigation, so a later re-run (after Clay answers) keeps it.\n        signal_json: ['signal', 'retry', 'recheck'].includes(c.trigger)\n          ? JSON.stringify({ trigger: c.trigger, signal: c.signal, signal_evidence: c.signal_evidence, signal_date: c.signal_date, saved_at: nowIso })\n          : clean(row && row.signal_json),\n      });\n    }\n\n    if (waiting) { pending.push(c.contact_id); continue; }\n    if (!chosen) {\n      // Nothing resolved it: give the agent the best we have, so it can say [VERIFY] with evidence.\n      chosen = results.find((r) => !isPending(r) && r.found)\n        || results.find((r) => !isPending(r))\n        || (row && row.summary)\n        || { found: false, note: 'No lookup tool returned a result (none configured, all over budget, or tried recently).' };\n    }\n    const { contact_id, credits_used, pending: p, action, email, email_status, ...forAgent } = chosen;\n    const emailOk = clean(email) && !/not_unlocked|@domain\\.com$/i.test(email) && normDomain(email) === normDomain(chosen.job_company_website);\n    briefs.push({\n      ...c,\n      lookup_source: clean(chosen.provider) || (cached ? clean(row.provider) : ''),\n      lookup_email: emailOk ? lower(email) : '',\n      lookup_email_status: emailOk ? lower(email_status) : '',\n      lookup_json: JSON.stringify(forAgent, null, 1),\n    });\n  }\n\n  // Usage and budget warnings.\n  const usageOut = [];\n  const alerts = [];\n  for (const [provider, spent] of Object.entries(credits)) {\n    if (!spent) continue;\n    const slot = slots.find((s) => s && s.name === provider);\n    const budget = slot ? slot.budget : null;\n    const u = usageFor(usageRows, provider, now);\n    const total = u.used + spent;\n    let warned = u.warned;\n    if (budget && !warned && total >= budget * warnAt) {\n      warned = true;\n      const pct = Math.round((total / budget) * 100);\n      const text = `${provider} has used ${total} of its ${budget} lookup credits this month (${pct}%).${total >= budget ? ' It is now paused until next month; Valari will use the next tool in line.' : ' Valari will pause it at the limit and use the next tool in line.'}`;\n      alerts.push({\n        action: 'alert', kind: 'budget', contact_id: '',\n        subject: `Valari: ${provider} lookup budget at ${pct}%`,\n        text_md: `:warning: *Lookup budget:* ${text}`,\n        html: `<p><b>Lookup budget:</b> ${text}</p>`,\n        text_plain: `Lookup budget: ${text}`,\n        to_name: '', to_email: '', to_slack_id: '', cc_name: '', cc_email: '', cc_slack_id: '', priority: '',\n      });\n    }\n    usageOut.push({ usage_key: u.key, month: monthKey(now), provider, credits_used: String(total), budget: budget === null ? '' : String(budget), warned: warned ? 'TRUE' : 'FALSE' });\n  }\n\n  return { briefs, pending, cache_rows: cacheOut, usage_rows: usageOut, alerts };\n}\n\n// ---- n8n entry ----\n// Who still needs looking up after the earlier tools, within this tool's monthly budget.\nconst cfg = $('Config').first().json;\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);\nconst candidates = $('Find Candidates').all().map((i) => i.json);\nconst prior = [...rows('Look Up 1'), ...rows('Look Up 2')];\nconst { requests, budget_skipped, slot } = planSlot(cfg, 3, candidates, rows('Read Lookup Cache'), rows('Read Usage'), prior);\nif (slot && budget_skipped.length) console.log(`${slot.name} is at its monthly budget. Skipped:`, budget_skipped);\nreturn requests.map((json) => ({ json }));"
+      },
+      "id": "4e9b48f6-fdac-4a69-aacd-a0bc33ca590a",
+      "name": "Lookup 3 Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2880,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "50b7dfba-6a1c-411e-a32a-64b92ef1ee7b",
+              "leftValue": "={{ $json.action !== 'noop' && !!$('Config').first().json.lookup_3_connector_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "4940519d-7bbb-4ae1-a83c-2f7b14253123",
+      "name": "Use Lookup 3?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3120,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.lookup_3_connector_id }}"
+        },
+        "mode": "once",
+        "options": {}
+      },
+      "id": "90b74e73-9b0f-4ff6-a28b-b0080a228783",
+      "name": "Look Up 3",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3120,
+        300
+      ],
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Lookup waterfall: try up to three lookup tools in order, stop as soon as one gives a good answer,\n// and never spend more than each tool's monthly budget.\n// Pure functions: tested in test/, inlined into the core's lookup Code nodes.\n\n\n// Slot i (1, 2 or 3) as configured in Config: lookup_<i>_name, lookup_<i>_connector_id, lookup_<i>_monthly_budget.\n// A blank budget means no limit. 0 switches the tool off.\nfunction lookupSlot(cfg, i) {\n  const id = clean(cfg[`lookup_${i}_connector_id`]);\n  if (!id) return null;\n  const b = clean(cfg[`lookup_${i}_monthly_budget`]);\n  return { index: i, name: lower(cfg[`lookup_${i}_name`]) || `lookup_${i}`, connector_id: id, budget: b === '' ? null : Number(b) };\n}\n\nconst monthKey = (now) => now.toISOString().slice(0, 7);\nconst daysAgo = (iso, now) => {\n  const d = new Date(clean(iso));\n  return isNaN(d.getTime()) ? Infinity : (now - d) / 86400000;\n};\n\nfunction usageFor(usageRows, provider, now) {\n  const key = `${monthKey(now)}:${provider}`;\n  const row = (usageRows || []).find((u) => clean(u.usage_key) === key);\n  return { key, used: row ? Number(row.credits_used) || 0 : 0, warned: row ? lower(row.warned) === 'true' : false };\n}\n\nfunction sameCompany(c, s) {\n  const d1 = normDomain(c.last_company_domain);\n  const d2 = normDomain(s.job_company_website);\n  if (d1 && d2) return d1 === d2;\n  return !!lower(s.job_company_name) && lower(s.job_company_name) === lower(c.last_company);\n}\n\n// A result answers the question if it shows a current job, and, when we have a \"they left\" signal,\n// it isn't just the old job from data collected before that signal.\nfunction isResolved(c, s) {\n  if (!s || !s.found) return false;\n  if (!clean(s.job_company_name) && !(Array.isArray(s.experience) && s.experience.length)) return false;\n  if (['signal', 'retry', 'recheck'].includes(c.trigger) && sameCompany(c, s)) {\n    const verified = new Date(clean(s.job_last_verified) || clean(s.job_last_changed));\n    const signal = new Date(clean(c.signal_date));\n    if (isNaN(verified.getTime()) || isNaN(signal.getTime()) || verified < signal) return false;\n  }\n  return true;\n}\n\nfunction cacheIndex(cacheRows) {\n  const m = new Map();\n  for (const r of cacheRows || []) {\n    if (!r || !clean(r.contact_id)) continue;\n    m.set(clean(r.contact_id), { ...r, summary: parseJson(r.summary_json, null), tried: parseJson(r.tried_json, {}) || {} });\n  }\n  return m;\n}\n\nfunction freshCached(cfg, c, row, now) {\n  const days = Number(cfg.lookup_cache_days ?? 14);\n  if (!row || !row.summary || daysAgo(row.looked_up_at, now) > days) return null;\n  return isResolved(c, row.summary) ? row.summary : null;\n}\n\n// Who should slot i look up, within its budget?\nfunction planSlot(cfg, i, candidates, cacheRows, usageRows, priorResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const slot = lookupSlot(cfg, i);\n  const noop = { requests: [{ action: 'noop' }], budget_skipped: [], slot };\n  if (!slot || slot.budget === 0) return noop;\n  const repeatDays = Number(cfg.lookup_repeat_days ?? 30);\n  const cache = cacheIndex(cacheRows);\n  const prior = new Map();\n  for (const r of priorResults || []) if (r && clean(r.contact_id)) (prior.get(clean(r.contact_id)) || prior.set(clean(r.contact_id), []).get(clean(r.contact_id))).push(r);\n\n  const wanted = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    if (freshCached(cfg, c, row, now)) continue;\n    const earlier = prior.get(c.contact_id) || [];\n    if (earlier.some((r) => r.pending === true || lower(r.pending) === 'true' || isResolved(c, r))) continue;\n    // Applies to manual runs too: the Lookup Callback re-runs people manually, and asking the same tool\n    // again right away would loop (and spend a credit each time).\n    const triedAt = row && row.tried ? row.tried[slot.name] : '';\n    if (daysAgo(triedAt, now) < repeatDays) continue;\n    wanted.push({\n      action: 'lookup_person',\n      contact_id: c.contact_id,\n      full_name: c.full_name, first_name: c.first_name, last_name: c.last_name,\n      work_email: c.work_email, linkedin_url: c.linkedin_url,\n      last_company: c.last_company, last_company_domain: c.last_company_domain, last_title: c.last_title,\n    });\n  }\n  const used = usageFor(usageRows, slot.name, now).used;\n  const remaining = slot.budget === null ? Infinity : Math.max(0, slot.budget - used);\n  const requests = wanted.slice(0, remaining);\n  const skipped = wanted.slice(requests.length).map((r) => r.contact_id);\n  return { requests: requests.length ? requests : noop.requests, budget_skipped: skipped, slot };\n}\n\n// After all slots ran: pick each person's answer, and work out cache, usage and budget warnings.\nfunction collectLookups(cfg, candidates, cacheRows, usageRows, slotResults, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const nowIso = now.toISOString();\n  const warnAt = (Number(cfg.budget_warning_percent ?? 80) || 80) / 100;\n  const cache = cacheIndex(cacheRows);\n  const slots = [1, 2, 3].map((i) => lookupSlot(cfg, i));\n\n  // Results per person, in slot order, each tagged with its provider.\n  const byPerson = new Map();\n  const credits = {};\n  (slotResults || []).forEach((rows, idx) => {\n    const slot = slots[idx];\n    for (const r of rows || []) {\n      if (!r || !clean(r.contact_id)) continue;\n      const provider = lower(r.provider) || (slot && slot.name) || `lookup_${idx + 1}`;\n      const res = { ...r, provider };\n      (byPerson.get(res.contact_id) || byPerson.set(res.contact_id, []).get(res.contact_id)).push(res);\n      credits[provider] = (credits[provider] || 0) + (Number(r.credits_used) || 0);\n    }\n  });\n\n  const briefs = [];\n  const pending = [];\n  const cacheOut = [];\n  for (const c of candidates || []) {\n    const row = cache.get(c.contact_id);\n    const results = byPerson.get(c.contact_id) || [];\n    const isPending = (r) => r.pending === true || lower(r.pending) === 'true';\n    const resolved = results.find((r) => isResolved(c, r));\n    const cached = resolved ? null : freshCached(cfg, c, row, now);\n    let chosen = resolved || cached;\n    const waiting = !chosen && results.some(isPending);\n\n    if (results.length) {\n      // A failed call (bad key, outage) doesn't count as \"tried\", so it is retried next run.\n      const tried = { ...(row ? row.tried : {}) };\n      for (const r of results) if (!/^Lookup failed/i.test(clean(r.note))) tried[r.provider] = nowIso;\n      const keep = resolved || results.find((r) => !isPending(r) && r.found) || results.find((r) => !isPending(r)) || results[0];\n      const { contact_id, credits_used, pending: p, action, ...summary } = keep;\n      cacheOut.push({\n        contact_id: c.contact_id,\n        provider: keep.provider,\n        found: keep.found ? 'TRUE' : 'FALSE',\n        pending: waiting ? 'TRUE' : 'FALSE',\n        summary_json: JSON.stringify(summary),\n        looked_up_at: nowIso,\n        tried_json: JSON.stringify(tried),\n        // Remember what started this investigation, so a later re-run (after Clay answers) keeps it.\n        signal_json: ['signal', 'retry', 'recheck'].includes(c.trigger)\n          ? JSON.stringify({ trigger: c.trigger, signal: c.signal, signal_evidence: c.signal_evidence, signal_date: c.signal_date, saved_at: nowIso })\n          : clean(row && row.signal_json),\n      });\n    }\n\n    if (waiting) { pending.push(c.contact_id); continue; }\n    if (!chosen) {\n      // Nothing resolved it: give the agent the best we have, so it can say [VERIFY] with evidence.\n      chosen = results.find((r) => !isPending(r) && r.found)\n        || results.find((r) => !isPending(r))\n        || (row && row.summary)\n        || { found: false, note: 'No lookup tool returned a result (none configured, all over budget, or tried recently).' };\n    }\n    const { contact_id, credits_used, pending: p, action, email, email_status, ...forAgent } = chosen;\n    const emailOk = clean(email) && !/not_unlocked|@domain\\.com$/i.test(email) && normDomain(email) === normDomain(chosen.job_company_website);\n    briefs.push({\n      ...c,\n      lookup_source: clean(chosen.provider) || (cached ? clean(row.provider) : ''),\n      lookup_email: emailOk ? lower(email) : '',\n      lookup_email_status: emailOk ? lower(email_status) : '',\n      lookup_json: JSON.stringify(forAgent, null, 1),\n    });\n  }\n\n  // Usage and budget warnings.\n  const usageOut = [];\n  const alerts = [];\n  for (const [provider, spent] of Object.entries(credits)) {\n    if (!spent) continue;\n    const slot = slots.find((s) => s && s.name === provider);\n    const budget = slot ? slot.budget : null;\n    const u = usageFor(usageRows, provider, now);\n    const total = u.used + spent;\n    let warned = u.warned;\n    if (budget && !warned && total >= budget * warnAt) {\n      warned = true;\n      const pct = Math.round((total / budget) * 100);\n      const text = `${provider} has used ${total} of its ${budget} lookup credits this month (${pct}%).${total >= budget ? ' It is now paused until next month; Valari will use the next tool in line.' : ' Valari will pause it at the limit and use the next tool in line.'}`;\n      alerts.push({\n        action: 'alert', kind: 'budget', contact_id: '',\n        subject: `Valari: ${provider} lookup budget at ${pct}%`,\n        text_md: `:warning: *Lookup budget:* ${text}`,\n        html: `<p><b>Lookup budget:</b> ${text}</p>`,\n        text_plain: `Lookup budget: ${text}`,\n        to_name: '', to_email: '', to_slack_id: '', cc_name: '', cc_email: '', cc_slack_id: '', priority: '',\n      });\n    }\n    usageOut.push({ usage_key: u.key, month: monthKey(now), provider, credits_used: String(total), budget: budget === null ? '' : String(budget), warned: warned ? 'TRUE' : 'FALSE' });\n  }\n\n  return { briefs, pending, cache_rows: cacheOut, usage_rows: usageOut, alerts };\n}\n\n// ---- n8n entry ----\n// Picks each person's answer and works out the cache, credit usage and budget warnings.\nconst cfg = $('Config').first().json;\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);\nconst candidates = $('Find Candidates').all().map((i) => i.json);\nconst out = collectLookups(cfg, candidates, rows('Read Lookup Cache'), rows('Read Usage'), [rows('Look Up 1'), rows('Look Up 2'), rows('Look Up 3')]);\nif (out.pending.length) console.log('Waiting on async lookups (finished by the Lookup Callback):', out.pending);\nreturn [{ json: out }];"
+      },
+      "id": "89786bcf-b665-475d-a2da-da391c1d1e2f",
+      "name": "Collect Lookups",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3360,
+        460
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Collect Lookups').first().json.cache_rows.map((json) => ({ json }));"
+      },
+      "id": "903bcce1-2540-4bed-abee-2129f84f60b3",
+      "name": "Cache Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_lookups"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "baa629da-aa59-42d0-a9a9-cbc8e811a9c8",
+      "name": "Save Lookup Cache",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3840,
+        -40
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Collect Lookups').first().json.usage_rows.map((json) => ({ json }));"
+      },
+      "id": "239704ec-23f5-42ea-af81-e87239b81d96",
+      "name": "Usage Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_usage"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "usage_key",
+              "condition": "eq",
+              "keyValue": "={{ $json.usage_key }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "4a9ca652-5766-402c-a6bd-a8de5a602925",
+      "name": "Save Usage",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3840,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// People waiting on an async lookup stay \"suspect\"; if the answer never comes, they're retried in 2 days.\nconst today = new Date().toISOString().slice(0, 10);\nreturn $('Collect Lookups').first().json.pending.map((contact_id) => ({ json: { contact_id, status: 'suspect', last_checked: today } }));"
+      },
+      "id": "064eb103-c5b8-4df9-adc6-f5fca9387a14",
+      "name": "Pending Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_state"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "cd4a189b-1885-4a8b-a638-9d358ec526ad",
+      "name": "Save Pending",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        3840,
+        860
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Collect Lookups').first().json.alerts.map((json) => ({ json }));"
+      },
+      "id": "8cac8829-ca8b-408e-a037-934e19466f3e",
+      "name": "Budget Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        3600,
+        1060
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.alert_connector_id }}"
+        },
+        "mode": "once",
+        "options": {}
+      },
+      "id": "295dc279-e1a0-4d62-a055-03a5c8617ffc",
+      "name": "Send Budget Alerts",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        3840,
+        1060
+      ],
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "jsCode": "return $('Collect Lookups').first().json.briefs.map((json) => ({ json }));"
+      },
+      "id": "3fed401b-3a49-4343-a498-075010db1022",
+      "name": "Prepare Brief",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4080,
+        460
+      ]
+    },
+    {
+      "parameters": {
         "promptType": "define",
         "text": "=Investigate this person.\n\nName: {{ $json.full_name }}\nEmail at last company: {{ $json.work_email }}\nLinkedIn: {{ $json.linkedin_url || 'not on file' }}\nLast known company: {{ $json.last_company }} ({{ $json.last_company_domain || 'domain unknown' }})\nLast known title: {{ $json.last_title || 'unknown' }}\nRelationship with us: {{ $json.role_type }}. {{ $json.notes }}\nWhy we are checking: {{ $json.trigger }}. {{ $json.signal_evidence }}\nToday: {{ $now.toISODate() }}\n\nOur product: {{ $('Config').first().json.product_description }}\nOur ICP: {{ $('Config').first().json.icp_description }}\nPersonas we care most about: {{ (() => { try { return JSON.parse($('Config').first().json.personas || '[]').map(p => p.name).join(', ') || 'not set'; } catch (e) { return 'not set'; } })() }}\nOpener guidelines: {{ $('Config').first().json.opener_guidelines }}\n\nLookup result:\n{{ $json.lookup_json }}",
         "hasOutputParser": true,
         "options": {
-          "systemMessage": "You are the Investigator for Valari, a GTM team's job-change tracker. A champion is someone who used or bought our product at a previous company. Your job is to find out whether this person has moved to a new company, and to say how sure you are, using only the lookup you are given and what your tools return.\n\n## What you get\n\nThe person's record, the reason we are checking, and a lookup that has already been run for them (under \"Lookup result\", usually from People Data Labs). Start from that lookup.\n\n## Tools\n\n- `search` (web search, only if it is connected): use it when the lookup found nothing or conflicts with the inbox signal. Good queries: the person's full name plus their likely new company, or full name plus title plus city. At most 2 searches, and never the same query twice.\n- `thinking_tool`: a scratchpad to reason through conflicting evidence. Optional.\n\n## How to read the lookup result\n\n- `job_company_name`, `job_company_website`, `job_title`, `job_start_date`: their current primary role.\n- `job_last_changed` and `job_last_verified`: when the role data last changed and was last confirmed. Recent dates mean fresher data.\n- `experience`: past and present roles. A role with no `end_date` is current. `is_primary: true` marks the main job.\n- A 404 or \"not found\" response means no match. That is not evidence that they moved.\n\n## Decide the outcome\n\n- `confirmed`: a reliable source shows a current primary role at a company that is different from their last known company. Fill in `new_company`, `new_company_domain`, `new_title` and `started_new_role` (YYYY-MM if known).\n- `verify`: there is a reason to think they left (a bounce, an auto-reply, an ended role) but no reliable source shows the new company yet, or sources conflict, or the only evidence is a single weak web mention.\n- `no_change`: the data shows they are still at their last known company and nothing suggests otherwise.\n\nSet `side_role` to true if the only new role is a board seat, advisor, investor, part-time, freelance, volunteer, or \"stealth\" role. Those are not real moves.\n\nConfidence:\n- `high`: a recent, specific source (for example People Data Labs with a recent `job_last_verified`), or two independent sources that agree.\n- `medium`: one decent source.\n- `low`: weak, old, or partial evidence.\n\n`icp_fit` for the new company, judged against the ICP description you are given: `strong`, `partial`, `weak`, or `unknown` if you have no basis to judge. Do not search just to judge ICP fit. If the product or ICP description still starts with \"REPLACE\", it has not been filled in: use `unknown` for ICP fit and keep the opener generic.\n\n## Evidence\n\nWrite 1 to 4 short lines, each starting with \"- \". Name the source and the date if you have one, for example: \"- People Data Labs: Director of Operations at Acme since 2026-09 (verified 2026-10)\". Never invent a source, a date, or a URL. If a tool returned nothing useful, say so.\n\n## Draft opener\n\nOnly when the outcome is `confirmed`. Write a short first message the rep could send, following the opener guidelines you are given (by default: 2 to 4 sentences, under 70 words, warm and plain). Congratulate them on the new role, mention what they did with our product before (use the relationship notes if there are any), and offer to help them get set up at the new company. No placeholders like [Name], no sign-off name, no em dashes. Leave it empty for any other outcome.\n\n## Rules\n\n- Use only what your tools returned and the facts you were given. Do not guess a new employer from a name match alone. Common names need a matching detail (past company, title, or city) before you trust a result.\n- Never contact the person, and never suggest scraping LinkedIn.\n- Respond only in the required structured format.\n",
+          "systemMessage": "You are the Investigator for Valari, a GTM team's job-change tracker. A champion is someone who used or bought our product at a previous company. Your job is to find out whether this person has moved to a new company, and to say how sure you are, using only the lookup you are given and what your tools return.\n\n## What you get\n\nThe person's record, the reason we are checking, and a lookup that has already been run for them (under \"Lookup result\"). It comes from whichever lookup tool found them first, such as Apollo, Clay or People Data Labs, named in `provider`. Start from that lookup.\n\n## Tools\n\n- `search` (web search, only if it is connected): use it when the lookup found nothing or conflicts with the inbox signal. Good queries: the person's full name plus their likely new company, or full name plus title plus city. At most 2 searches, and never the same query twice.\n- `thinking_tool`: a scratchpad to reason through conflicting evidence. Optional.\n\n## How to read the lookup result\n\n- `job_company_name`, `job_company_website`, `job_title`, `job_start_date`: their current primary role.\n- `job_last_changed` and `job_last_verified`: when the role data last changed and was last confirmed. Recent dates mean fresher data.\n- `experience`: past and present roles. A role with no `end_date` is current. `is_primary: true` marks the main job.\n- Some tools (Apollo, Clay) don't give verification dates. When `job_last_verified` is empty, judge freshness from `job_start_date` and the work history.\n- A 404, \"not found\" or \"no matching person\" result means no match. That is not evidence that they moved. A result whose note starts with \"Lookup failed\" means the tool errored; say so in the evidence.\n\n## Decide the outcome\n\n- `confirmed`: a reliable source shows a current primary role at a company that is different from their last known company. Fill in `new_company`, `new_company_domain`, `new_title` and `started_new_role` (YYYY-MM if known).\n- `verify`: there is a reason to think they left (a bounce, an auto-reply, an ended role) but no reliable source shows the new company yet, or sources conflict, or the only evidence is a single weak web mention.\n- `no_change`: the data shows they are still at their last known company and nothing suggests otherwise.\n\nSet `side_role` to true if the only new role is a board seat, advisor, investor, part-time, freelance, volunteer, or \"stealth\" role. Those are not real moves.\n\nConfidence:\n- `high`: a recent, specific source (for example a lookup showing a new role with a start date after the bounce, or a recent `job_last_verified`), or two independent sources that agree.\n- `medium`: one decent source.\n- `low`: weak, old, or partial evidence.\n\n`icp_fit` for the new company, judged against the ICP description you are given: `strong`, `partial`, `weak`, or `unknown` if you have no basis to judge. Do not search just to judge ICP fit. If the product or ICP description still starts with \"REPLACE\", it has not been filled in: use `unknown` for ICP fit and keep the opener generic.\n\n## Evidence\n\nWrite 1 to 4 short lines, each starting with \"- \". Name the source and the date if you have one, for example: \"- Apollo: Director of Operations at Acme since 2026-09\". Never invent a source, a date, or a URL. If a tool returned nothing useful, say so.\n\n## Draft opener\n\nOnly when the outcome is `confirmed`. Write a short first message the rep could send, following the opener guidelines you are given (by default: 2 to 4 sentences, under 70 words, warm and plain). Congratulate them on the new role, mention what they did with our product before (use the relationship notes if there are any), and offer to help them get set up at the new company. No placeholders like [Name], no sign-off name, no em dashes. Leave it empty for any other outcome.\n\n## Rules\n\n- Use only what your tools returned and the facts you were given. Do not guess a new employer from a name match alone. Common names need a matching detail (past company, title, or city) before you trust a result.\n- Never contact the person, and never suggest scraping LinkedIn.\n- Respond only in the required structured format.\n",
           "maxIterations": 6
         }
       },
@@ -833,7 +1429,7 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2.2,
       "position": [
-        2640,
+        4360,
         460
       ],
       "onError": "continueRegularOutput"
@@ -854,7 +1450,7 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
       "typeVersion": 1.3,
       "position": [
-        2480,
+        4200,
         720
       ]
     },
@@ -867,7 +1463,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolThink",
       "typeVersion": 1,
       "position": [
-        2620,
+        4340,
         720
       ]
     },
@@ -880,7 +1476,7 @@
       "type": "@n8n/n8n-nodes-langchain.toolSerpApi",
       "typeVersion": 1,
       "position": [
-        2760,
+        4480,
         720
       ],
       "disabled": true,
@@ -896,7 +1492,7 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.2,
       "position": [
-        2900,
+        4620,
         720
       ]
     },
@@ -909,20 +1505,20 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3000,
+        5040,
         460
       ]
     },
     {
       "parameters": {
-        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\nfunction emailRequests(cfg, decisions) {\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain)\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// ---- n8n entry ----\nreturn emailRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json)).map((json) => ({ json }));"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\n// Emails the lookup already found at the new company (Apollo returns these), so the email finder can skip them.\nfunction lookupEmailResults(decisions) {\n  return (decisions || [])\n    .filter((d) => d.outcome === 'confirmed' && clean(d.candidate.lookup_email) && d.new_company_domain && clean(d.candidate.lookup_email).toLowerCase().endsWith(`@${d.new_company_domain}`))\n    .map((d) => ({\n      contact_id: d.candidate.contact_id,\n      email: clean(d.candidate.lookup_email),\n      status: lower(d.candidate.lookup_email_status) === 'verified' ? 'valid' : 'unknown',\n      confidence: '',\n      source: clean(d.candidate.lookup_source) || 'lookup',\n    }));\n}\n\nfunction emailRequests(cfg, decisions) {\n  const known = new Set(lookupEmailResults(decisions).map((r) => r.contact_id));\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain && !known.has(d.candidate.contact_id))\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// ---- n8n entry ----\nreturn emailRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json)).map((json) => ({ json }));"
       },
       "id": "427e1478-1b1b-4ad4-a265-af6cb59514dc",
       "name": "Email Requests",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3240,
+        5280,
         460
       ]
     },
@@ -956,7 +1552,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3480,
+        5520,
         460
       ]
     },
@@ -976,21 +1572,21 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        3720,
+        5760,
         300
       ],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\nfunction emailRequests(cfg, decisions) {\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain)\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// ---- n8n entry ----\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nreturn crmRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json), rows('Find Emails')).map((json) => ({ json }));"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\n// Emails the lookup already found at the new company (Apollo returns these), so the email finder can skip them.\nfunction lookupEmailResults(decisions) {\n  return (decisions || [])\n    .filter((d) => d.outcome === 'confirmed' && clean(d.candidate.lookup_email) && d.new_company_domain && clean(d.candidate.lookup_email).toLowerCase().endsWith(`@${d.new_company_domain}`))\n    .map((d) => ({\n      contact_id: d.candidate.contact_id,\n      email: clean(d.candidate.lookup_email),\n      status: lower(d.candidate.lookup_email_status) === 'verified' ? 'valid' : 'unknown',\n      confidence: '',\n      source: clean(d.candidate.lookup_source) || 'lookup',\n    }));\n}\n\nfunction emailRequests(cfg, decisions) {\n  const known = new Set(lookupEmailResults(decisions).map((r) => r.contact_id));\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain && !known.has(d.candidate.contact_id))\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// ---- n8n entry ----\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nconst decisions = $('Score and Route').all().map((i) => i.json);\n// Emails the lookup already found count too, so the email finder can be skipped for them.\nconst emails = [...lookupEmailResults(decisions), ...rows('Find Emails')];\nreturn crmRequests($('Config').first().json, decisions, emails).map((json) => ({ json }));"
       },
       "id": "fe3a2a84-20a6-4947-aa57-8305a771aaf3",
       "name": "CRM Requests",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        3720,
+        5760,
         500
       ]
     },
@@ -1024,7 +1620,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        3960,
+        6000,
         500
       ]
     },
@@ -1044,21 +1640,21 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        4200,
+        6240,
         340
       ],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\nfunction emailRequests(cfg, decisions) {\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain)\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// ---- n8n entry ----\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nreturn sequenceRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json), rows('Find Emails')).map((json) => ({ json }));"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\n// Emails the lookup already found at the new company (Apollo returns these), so the email finder can skip them.\nfunction lookupEmailResults(decisions) {\n  return (decisions || [])\n    .filter((d) => d.outcome === 'confirmed' && clean(d.candidate.lookup_email) && d.new_company_domain && clean(d.candidate.lookup_email).toLowerCase().endsWith(`@${d.new_company_domain}`))\n    .map((d) => ({\n      contact_id: d.candidate.contact_id,\n      email: clean(d.candidate.lookup_email),\n      status: lower(d.candidate.lookup_email_status) === 'verified' ? 'valid' : 'unknown',\n      confidence: '',\n      source: clean(d.candidate.lookup_source) || 'lookup',\n    }));\n}\n\nfunction emailRequests(cfg, decisions) {\n  const known = new Set(lookupEmailResults(decisions).map((r) => r.contact_id));\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain && !known.has(d.candidate.contact_id))\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// ---- n8n entry ----\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nconst decisions = $('Score and Route').all().map((i) => i.json);\n// Emails the lookup already found count too, so the email finder can be skipped for them.\nconst emails = [...lookupEmailResults(decisions), ...rows('Find Emails')];\nreturn sequenceRequests($('Config').first().json, decisions, emails).map((json) => ({ json }));"
       },
       "id": "2c746ce0-f38c-47ef-ada5-4a22ccf0315b",
       "name": "Sequence Requests",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4200,
+        6240,
         540
       ]
     },
@@ -1092,7 +1688,7 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        4440,
+        6480,
         540
       ]
     },
@@ -1112,21 +1708,21 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        4680,
+        6720,
         380
       ],
       "alwaysOutputData": true
     },
     {
       "parameters": {
-        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\nfunction emailRequests(cfg, decisions) {\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain)\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// Combines each decision with what the connectors did (email found, CRM record, sequence)\n// and produces the case row, the state row and the alert for each person.\n// Pure function: tested in test/, inlined into the \"Finalize\" Code node.\n\n\nconst esc = (s) => clean(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst mdEsc = (s) => clean(s).replace(/[<>]/g, '');\n\nfunction finalize(cfg, decisions, emailResults, crmResults, seqResults) {\n  const emails = byContact(emailResults);\n  const crm = byContact(crmResults);\n  const seq = byContact(seqResults);\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const crmName = clean(cfg.crm_name) || 'CRM';\n  // Only mention steps that are switched on.\n  const emailOn = !!clean(cfg.email_finder_connector_id) || truthy(cfg.find_new_emails) || (emailResults && emailResults.length > 0);\n  const seqOn = !!clean(cfg.sequence_connector_id) || (seqResults && seqResults.length > 0);\n\n  return decisions.map((d) => {\n    const c = d.candidate;\n    const id = c.contact_id;\n    const e = emails.get(id) || {};\n    const r = crm.get(id) || {};\n    const s = seq.get(id) || {};\n    const name = c.full_name || c.work_email;\n    const tag = (slack, nm) => (clean(slack) ? `<@${clean(slack)}>` : mdEsc(nm));\n\n    // ---- Status lines for what the connectors did.\n    let emailLine = '';\n    let crmLine = '';\n    let seqLine = '';\n    if (d.outcome === 'confirmed') {\n      emailLine = clean(e.email)\n        ? `${clean(e.email)}${e.status ? ` (${lower(e.status)}${e.confidence !== undefined && e.confidence !== '' ? `, ${e.confidence}%` : ''})` : ''}`\n        : (emailOn ? 'Not found' : '');\n      if (r.error) crmLine = `Could not write to ${crmName}: ${clean(r.error).slice(0, 160)}`;\n      else if (clean(r.crm_record_id)) crmLine = `Created ${lower(r.crm_record_type) || 'record'}${clean(r.task_id) ? ' and a task' : ''}${clean(r.crm_record_url) ? ` (${clean(r.crm_record_url)})` : ''}`;\n      else if (!truthy(cfg.crm_write_back)) crmLine = '';\n      else crmLine = `Not written to ${crmName}`;\n      if (s.enrolled === true || lower(s.enrolled) === 'true') seqLine = `Added to cadence ${clean(s.cadence_name) || clean(s.cadence_id)}. The first email waits for your review.`;\n      else if (clean(s.message)) seqLine = `Not enrolled: ${clean(s.message)}`;\n      else if (!seqOn) seqLine = '';\n      else if (!clean(e.email)) seqLine = 'Not enrolled: no new email';\n      else if ((Number(d.score) || 0) < minScore) seqLine = `Not enrolled: score below ${minScore}`;\n    }\n\n    // ---- Alert text in three renderings: Slack markdown, HTML (email/Teams), plain text.\n    let alert = null;\n    if (d.notify) {\n      const bucketLabel = { customer: 'Existing customer', open_deal: 'Open deal', lost_deal: 'Lost deal (second chance)', net_new: 'Net new account' }[d.bucket] || '';\n      const li = c.linkedin_url;\n      const ccNote = d.cc ? ` (cc ${tag(d.cc.slack_id, d.cc.name || d.cc.email)}, who worked with them at ${mdEsc(c.last_company) || 'their last company'})` : '';\n      let subject; let md; let html; let plain;\n      if (d.outcome === 'confirmed') {\n        const fit = [d.persona ? `${d.persona} persona` : '', bucketLabel, `ICP ${d.icp_fit}`, `Confidence ${d.confidence}`, `Was a ${c.role_type}`].filter(Boolean);\n        subject = `Champion move: ${name} is now at ${d.new_company} (${d.priority}, ${d.score}/100)`;\n        md = [\n          `:rotating_light: *Champion move: ${mdEsc(name)}* (${d.priority}, ${d.score}/100)`,\n          `${mdEsc(c.last_company) || 'Previous company'} → *${mdEsc(d.new_company)}*${d.new_title ? ` as ${mdEsc(d.new_title)}` : ''}${d.started_new_role ? ` (since ${d.started_new_role})` : ''}`,\n          `${tag(d.owner.slack_id, d.owner.name || d.owner.email) || 'Team'} this one is yours${ccNote}.`,\n          `*Fit:* ${fit.join(' · ')}`,\n          d.evidence ? `*Why we think so:*\\n${mdEsc(d.evidence)}` : '',\n          c.notes ? `*History with us:* ${mdEsc(c.notes)}` : '',\n          emailLine ? `*New email:* ${emailLine}` : '',\n          crmLine ? `*${crmName}:* ${crmLine}` : '',\n          seqLine ? `*Sequence:* ${seqLine}` : '',\n          d.draft_opener ? `*Draft opener (edit before sending):*\\n${d.draft_opener.split('\\n').map((l) => `> ${mdEsc(l)}`).join('\\n')}` : '',\n          li ? `<${li}|Open LinkedIn>` : '',\n        ].filter(Boolean).join('\\n');\n        html = [\n          `<p><b>Champion move: ${esc(name)}</b> (${esc(d.priority)}, ${esc(d.score)}/100)</p>`,\n          `<p>${esc(c.last_company) || 'Previous company'} → <b>${esc(d.new_company)}</b>${d.new_title ? ` as ${esc(d.new_title)}` : ''}${d.started_new_role ? ` (since ${esc(d.started_new_role)})` : ''}</p>`,\n          `<p><b>Fit:</b> ${esc(fit.join(' · '))}</p>`,\n          d.evidence ? `<p><b>Why we think so:</b><br>${esc(d.evidence).replace(/\\n/g, '<br>')}</p>` : '',\n          c.notes ? `<p><b>History with us:</b> ${esc(c.notes)}</p>` : '',\n          emailLine ? `<p><b>New email:</b> ${esc(emailLine)}</p>` : '',\n          crmLine ? `<p><b>${esc(crmName)}:</b> ${esc(crmLine)}</p>` : '',\n          seqLine ? `<p><b>Sequence:</b> ${esc(seqLine)}</p>` : '',\n          d.draft_opener ? `<p><b>Draft opener (edit before sending):</b></p><blockquote>${esc(d.draft_opener).replace(/\\n/g, '<br>')}</blockquote>` : '',\n          li ? `<p><a href=\"${esc(li)}\">Open LinkedIn</a></p>` : '',\n        ].filter(Boolean).join('\\n');\n      } else {\n        subject = `[VERIFY] ${name} may have left ${c.last_company || 'their company'}`;\n        md = [\n          `:mag: *[VERIFY] ${mdEsc(name)} may have left ${mdEsc(c.last_company) || 'their company'}*`,\n          `${tag(d.owner.slack_id, d.owner.name || d.owner.email) || 'Team'} we have a signal but could not confirm a new role yet. Can you take a quick look? ${li ? `<${li}|Open LinkedIn>` : 'No LinkedIn URL on file'}`,\n          d.evidence ? `*What we found:*\\n${mdEsc(d.evidence)}` : '',\n          `I will recheck automatically on ${d.next_check_on}.`,\n        ].filter(Boolean).join('\\n');\n        html = [\n          `<p><b>[VERIFY] ${esc(name)} may have left ${esc(c.last_company) || 'their company'}</b></p>`,\n          `<p>We have a signal but could not confirm a new role yet. Can you take a quick look?${li ? ` <a href=\"${esc(li)}\">Open LinkedIn</a>` : ''}</p>`,\n          d.evidence ? `<p><b>What we found:</b><br>${esc(d.evidence).replace(/\\n/g, '<br>')}</p>` : '',\n          `<p>I will recheck automatically on ${esc(d.next_check_on)}.</p>`,\n        ].filter(Boolean).join('\\n');\n      }\n      plain = html.replace(/<br>/g, '\\n').replace(/<\\/p>/g, '\\n').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"').replace(/&amp;/g, '&').trim();\n      alert = {\n        action: 'alert',\n        kind: d.outcome === 'confirmed' ? 'move' : 'verify',\n        contact_id: id,\n        subject, text_md: md, html, text_plain: plain,\n        to_name: clean(d.owner.name), to_email: clean(d.owner.email), to_slack_id: clean(d.owner.slack_id),\n        cc_name: d.cc ? clean(d.cc.name) : '', cc_email: d.cc ? clean(d.cc.email) : '', cc_slack_id: d.cc ? clean(d.cc.slack_id) : '',\n        priority: d.priority,\n      };\n    }\n\n    const stamp = clean(d.decided_at).replace(/[-:TZ.]/g, '').slice(0, 14);\n    const enrolled = s.enrolled === true || lower(s.enrolled) === 'true';\n    return {\n      case_row: {\n        case_id: `${id}-${stamp}`,\n        created_at: d.decided_at,\n        contact_id: id,\n        full_name: c.full_name,\n        source: c.source || '',\n        trigger: c.trigger,\n        signal: c.signal,\n        outcome: d.outcome,\n        confidence: d.confidence,\n        old_company: c.last_company,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        new_title: d.new_title,\n        started_new_role: d.started_new_role,\n        persona: d.persona,\n        icp_fit: d.outcome === 'confirmed' ? d.icp_fit : '',\n        bucket: d.bucket,\n        score: d.score === '' ? '' : String(d.score),\n        priority: d.priority,\n        evidence: d.evidence,\n        linkedin_url: c.linkedin_url,\n        new_email: clean(e.email),\n        crm_record_url: clean(r.crm_record_url) || clean(r.crm_record_id),\n        sequence_status: d.outcome === 'confirmed' ? (enrolled ? 'enrolled' : seqLine.replace(/^Not enrolled: /, 'skipped: ')) : '',\n        draft_opener: d.draft_opener,\n        owner_ae: clean(d.owner.name) || clean(d.owner.email),\n        notified: alert ? 'TRUE' : 'FALSE',\n        ae_feedback: '',\n      },\n      state_row: {\n        contact_id: id,\n        full_name: c.full_name,\n        status: d.status,\n        last_checked: clean(d.decided_at).slice(0, 10),\n        next_check_on: d.next_check_on,\n        current_company: d.new_company,\n        current_title: d.new_title,\n        new_company_domain: d.new_company_domain,\n        new_email: clean(e.email),\n        moved_at: d.outcome === 'confirmed' ? clean(d.decided_at).slice(0, 10) : '',\n        owner_ae: clean(d.owner.name),\n        owner_ae_email: clean(d.owner.email),\n        owner_ae_slack_id: clean(d.owner.slack_id),\n        linkedin_url: c.linkedin_url,\n        crm_record_url: clean(r.crm_record_url),\n      },\n      alert,\n    };\n  });\n}\n\n// ---- n8n entry ----\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nconst out = finalize($('Config').first().json, $('Score and Route').all().map((i) => i.json), rows('Find Emails'), rows('Record Moves'), rows('Enroll in Sequence'));\nreturn out.map((json) => ({ json }));"
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the requests the core sends to optional connectors after a move is confirmed:\n// find the new work email, write the move to the CRM, and enroll in a sequence.\n// Pure functions: tested in test/, inlined into the matching Code nodes.\n\n\nconst NOOP = [{ action: 'noop' }];\n\nfunction byContact(rows) {\n  const m = new Map();\n  for (const r of rows || []) if (r && clean(r.contact_id)) m.set(clean(r.contact_id), r);\n  return m;\n}\n\nfunction personName(d) {\n  const c = d.candidate;\n  const split = splitName(c.full_name);\n  return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };\n}\n\n// Emails the lookup already found at the new company (Apollo returns these), so the email finder can skip them.\nfunction lookupEmailResults(decisions) {\n  return (decisions || [])\n    .filter((d) => d.outcome === 'confirmed' && clean(d.candidate.lookup_email) && d.new_company_domain && clean(d.candidate.lookup_email).toLowerCase().endsWith(`@${d.new_company_domain}`))\n    .map((d) => ({\n      contact_id: d.candidate.contact_id,\n      email: clean(d.candidate.lookup_email),\n      status: lower(d.candidate.lookup_email_status) === 'verified' ? 'valid' : 'unknown',\n      confidence: '',\n      source: clean(d.candidate.lookup_source) || 'lookup',\n    }));\n}\n\nfunction emailRequests(cfg, decisions) {\n  const known = new Set(lookupEmailResults(decisions).map((r) => r.contact_id));\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain && !known.has(d.candidate.contact_id))\n    .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction crmRequests(cfg, decisions, emailResults) {\n  if (!truthy(cfg.crm_write_back)) return NOOP;\n  const emails = byContact(emailResults);\n  const reqs = decisions\n    .filter((d) => d.outcome === 'confirmed')\n    .map((d) => {\n      const c = d.candidate;\n      const e = emails.get(c.contact_id) || {};\n      const lines = [\n        `Former ${c.role_type} at ${c.last_company || 'a previous company'} who used our product. Now ${d.new_title || 'at'} ${d.new_company}.`,\n        d.priority ? `Priority: ${d.priority} (${d.score}/100)${d.persona ? `, persona: ${d.persona}` : ''}.` : '',\n        d.evidence ? `Evidence:\\n${d.evidence}` : '',\n        c.notes ? `History with us: ${c.notes}` : '',\n        d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '',\n      ].filter(Boolean);\n      return {\n        action: 'record_move',\n        contact_id: c.contact_id,\n        ...personName(d),\n        new_email: clean(e.email),\n        new_title: d.new_title,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        crm_account_id: d.crm_account_id,\n        owner_crm_id: clean(d.owner.crm_id),\n        old_company: c.last_company,\n        old_crm_contact_id: c.source === 'product' ? '' : c.contact_id,\n        task_subject: `Champion moved: ${c.full_name} is now at ${d.new_company}`,\n        task_body: lines.join('\\n\\n'),\n      };\n    });\n  return reqs.length ? reqs : NOOP;\n}\n\nfunction sequenceRequests(cfg, decisions, emailResults) {\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const emails = byContact(emailResults);\n  const reqs = [];\n  for (const d of decisions) {\n    if (d.outcome !== 'confirmed') continue;\n    const e = emails.get(d.candidate.contact_id) || {};\n    if (!clean(e.email) || lower(e.status) === 'invalid') continue;\n    if ((Number(d.score) || 0) < minScore) continue;\n    reqs.push({\n      action: 'enroll',\n      contact_id: d.candidate.contact_id,\n      ...personName(d),\n      email: clean(e.email),\n      title: d.new_title,\n      company: d.new_company,\n      company_domain: d.new_company_domain,\n      cadence_key: d.bucket,\n      persona: d.persona,\n      priority: d.priority,\n      owner_email: clean(d.owner.email),\n      owner_sequence_user_id: clean(d.owner.sequence_user_id),\n      note: [d.draft_opener ? `Draft opener:\\n${d.draft_opener}` : '', d.evidence ? `Why:\\n${d.evidence}` : ''].filter(Boolean).join('\\n\\n'),\n    });\n  }\n  return reqs.length ? reqs : NOOP;\n}\n\n// Combines each decision with what the connectors did (email found, CRM record, sequence)\n// and produces the case row, the state row and the alert for each person.\n// Pure function: tested in test/, inlined into the \"Finalize\" Code node.\n\n\nconst esc = (s) => clean(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\nconst mdEsc = (s) => clean(s).replace(/[<>]/g, '');\n\nfunction finalize(cfg, decisions, emailResults, crmResults, seqResults) {\n  const emails = byContact(emailResults);\n  const crm = byContact(crmResults);\n  const seq = byContact(seqResults);\n  const minScore = Number(cfg.enroll_min_score ?? 45);\n  const crmName = clean(cfg.crm_name) || 'CRM';\n  // Only mention steps that are switched on.\n  const emailOn = !!clean(cfg.email_finder_connector_id) || truthy(cfg.find_new_emails) || (emailResults && emailResults.length > 0);\n  const seqOn = !!clean(cfg.sequence_connector_id) || (seqResults && seqResults.length > 0);\n\n  return decisions.map((d) => {\n    const c = d.candidate;\n    const id = c.contact_id;\n    const e = emails.get(id) || {};\n    const r = crm.get(id) || {};\n    const s = seq.get(id) || {};\n    const name = c.full_name || c.work_email;\n    const tag = (slack, nm) => (clean(slack) ? `<@${clean(slack)}>` : mdEsc(nm));\n\n    // ---- Status lines for what the connectors did.\n    let emailLine = '';\n    let crmLine = '';\n    let seqLine = '';\n    if (d.outcome === 'confirmed') {\n      emailLine = clean(e.email)\n        ? `${clean(e.email)}${e.status ? ` (${lower(e.status)}${e.confidence !== undefined && e.confidence !== '' ? `, ${e.confidence}%` : ''})` : ''}`\n        : (emailOn ? 'Not found' : '');\n      if (r.error) crmLine = `Could not write to ${crmName}: ${clean(r.error).slice(0, 160)}`;\n      else if (clean(r.crm_record_id)) crmLine = `Created ${lower(r.crm_record_type) || 'record'}${clean(r.task_id) ? ' and a task' : ''}${clean(r.crm_record_url) ? ` (${clean(r.crm_record_url)})` : ''}`;\n      else if (!truthy(cfg.crm_write_back)) crmLine = '';\n      else crmLine = `Not written to ${crmName}`;\n      if (s.enrolled === true || lower(s.enrolled) === 'true') seqLine = `Added to cadence ${clean(s.cadence_name) || clean(s.cadence_id)}. The first email waits for your review.`;\n      else if (clean(s.message)) seqLine = `Not enrolled: ${clean(s.message)}`;\n      else if (!seqOn) seqLine = '';\n      else if (!clean(e.email)) seqLine = 'Not enrolled: no new email';\n      else if ((Number(d.score) || 0) < minScore) seqLine = `Not enrolled: score below ${minScore}`;\n    }\n\n    // ---- Alert text in three renderings: Slack markdown, HTML (email/Teams), plain text.\n    let alert = null;\n    if (d.notify) {\n      const bucketLabel = { customer: 'Existing customer', open_deal: 'Open deal', lost_deal: 'Lost deal (second chance)', net_new: 'Net new account' }[d.bucket] || '';\n      const li = c.linkedin_url;\n      const ccNote = d.cc ? ` (cc ${tag(d.cc.slack_id, d.cc.name || d.cc.email)}, who worked with them at ${mdEsc(c.last_company) || 'their last company'})` : '';\n      let subject; let md; let html; let plain;\n      if (d.outcome === 'confirmed') {\n        const fit = [d.persona ? `${d.persona} persona` : '', bucketLabel, `ICP ${d.icp_fit}`, `Confidence ${d.confidence}`, `Was a ${c.role_type}`].filter(Boolean);\n        subject = `Champion move: ${name} is now at ${d.new_company} (${d.priority}, ${d.score}/100)`;\n        md = [\n          `:rotating_light: *Champion move: ${mdEsc(name)}* (${d.priority}, ${d.score}/100)`,\n          `${mdEsc(c.last_company) || 'Previous company'} → *${mdEsc(d.new_company)}*${d.new_title ? ` as ${mdEsc(d.new_title)}` : ''}${d.started_new_role ? ` (since ${d.started_new_role})` : ''}`,\n          `${tag(d.owner.slack_id, d.owner.name || d.owner.email) || 'Team'} this one is yours${ccNote}.`,\n          `*Fit:* ${fit.join(' · ')}`,\n          d.evidence ? `*Why we think so:*\\n${mdEsc(d.evidence)}${c.lookup_source ? `\\n_Source: ${mdEsc(c.lookup_source)}_` : ''}` : '',\n          c.notes ? `*History with us:* ${mdEsc(c.notes)}` : '',\n          emailLine ? `*New email:* ${emailLine}` : '',\n          crmLine ? `*${crmName}:* ${crmLine}` : '',\n          seqLine ? `*Sequence:* ${seqLine}` : '',\n          d.draft_opener ? `*Draft opener (edit before sending):*\\n${d.draft_opener.split('\\n').map((l) => `> ${mdEsc(l)}`).join('\\n')}` : '',\n          li ? `<${li}|Open LinkedIn>` : '',\n        ].filter(Boolean).join('\\n');\n        html = [\n          `<p><b>Champion move: ${esc(name)}</b> (${esc(d.priority)}, ${esc(d.score)}/100)</p>`,\n          `<p>${esc(c.last_company) || 'Previous company'} → <b>${esc(d.new_company)}</b>${d.new_title ? ` as ${esc(d.new_title)}` : ''}${d.started_new_role ? ` (since ${esc(d.started_new_role)})` : ''}</p>`,\n          `<p><b>Fit:</b> ${esc(fit.join(' · '))}</p>`,\n          d.evidence ? `<p><b>Why we think so:</b><br>${esc(d.evidence).replace(/\\n/g, '<br>')}</p>` : '',\n          c.notes ? `<p><b>History with us:</b> ${esc(c.notes)}</p>` : '',\n          emailLine ? `<p><b>New email:</b> ${esc(emailLine)}</p>` : '',\n          crmLine ? `<p><b>${esc(crmName)}:</b> ${esc(crmLine)}</p>` : '',\n          seqLine ? `<p><b>Sequence:</b> ${esc(seqLine)}</p>` : '',\n          d.draft_opener ? `<p><b>Draft opener (edit before sending):</b></p><blockquote>${esc(d.draft_opener).replace(/\\n/g, '<br>')}</blockquote>` : '',\n          li ? `<p><a href=\"${esc(li)}\">Open LinkedIn</a></p>` : '',\n        ].filter(Boolean).join('\\n');\n      } else {\n        subject = `[VERIFY] ${name} may have left ${c.last_company || 'their company'}`;\n        md = [\n          `:mag: *[VERIFY] ${mdEsc(name)} may have left ${mdEsc(c.last_company) || 'their company'}*`,\n          `${tag(d.owner.slack_id, d.owner.name || d.owner.email) || 'Team'} we have a signal but could not confirm a new role yet. Can you take a quick look? ${li ? `<${li}|Open LinkedIn>` : 'No LinkedIn URL on file'}`,\n          d.evidence ? `*What we found:*\\n${mdEsc(d.evidence)}` : '',\n          `I will recheck automatically on ${d.next_check_on}.`,\n        ].filter(Boolean).join('\\n');\n        html = [\n          `<p><b>[VERIFY] ${esc(name)} may have left ${esc(c.last_company) || 'their company'}</b></p>`,\n          `<p>We have a signal but could not confirm a new role yet. Can you take a quick look?${li ? ` <a href=\"${esc(li)}\">Open LinkedIn</a>` : ''}</p>`,\n          d.evidence ? `<p><b>What we found:</b><br>${esc(d.evidence).replace(/\\n/g, '<br>')}</p>` : '',\n          `<p>I will recheck automatically on ${esc(d.next_check_on)}.</p>`,\n        ].filter(Boolean).join('\\n');\n      }\n      plain = html.replace(/<br>/g, '\\n').replace(/<\\/p>/g, '\\n').replace(/<[^>]+>/g, '').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&quot;/g, '\"').replace(/&amp;/g, '&').trim();\n      alert = {\n        action: 'alert',\n        kind: d.outcome === 'confirmed' ? 'move' : 'verify',\n        contact_id: id,\n        subject, text_md: md, html, text_plain: plain,\n        to_name: clean(d.owner.name), to_email: clean(d.owner.email), to_slack_id: clean(d.owner.slack_id),\n        cc_name: d.cc ? clean(d.cc.name) : '', cc_email: d.cc ? clean(d.cc.email) : '', cc_slack_id: d.cc ? clean(d.cc.slack_id) : '',\n        priority: d.priority,\n      };\n    }\n\n    const stamp = clean(d.decided_at).replace(/[-:TZ.]/g, '').slice(0, 14);\n    const enrolled = s.enrolled === true || lower(s.enrolled) === 'true';\n    return {\n      case_row: {\n        case_id: `${id}-${stamp}`,\n        created_at: d.decided_at,\n        contact_id: id,\n        full_name: c.full_name,\n        source: c.source || '',\n        trigger: c.trigger,\n        signal: c.signal,\n        outcome: d.outcome,\n        confidence: d.confidence,\n        old_company: c.last_company,\n        new_company: d.new_company,\n        new_company_domain: d.new_company_domain,\n        new_title: d.new_title,\n        started_new_role: d.started_new_role,\n        persona: d.persona,\n        icp_fit: d.outcome === 'confirmed' ? d.icp_fit : '',\n        bucket: d.bucket,\n        score: d.score === '' ? '' : String(d.score),\n        priority: d.priority,\n        evidence: d.evidence,\n        linkedin_url: c.linkedin_url,\n        lookup_source: clean(c.lookup_source),\n        new_email: clean(e.email),\n        crm_record_url: clean(r.crm_record_url) || clean(r.crm_record_id),\n        sequence_status: d.outcome === 'confirmed' ? (enrolled ? 'enrolled' : seqLine.replace(/^Not enrolled: /, 'skipped: ')) : '',\n        draft_opener: d.draft_opener,\n        owner_ae: clean(d.owner.name) || clean(d.owner.email),\n        notified: alert ? 'TRUE' : 'FALSE',\n        ae_feedback: '',\n      },\n      state_row: {\n        contact_id: id,\n        full_name: c.full_name,\n        status: d.status,\n        last_checked: clean(d.decided_at).slice(0, 10),\n        next_check_on: d.next_check_on,\n        current_company: d.new_company,\n        current_title: d.new_title,\n        new_company_domain: d.new_company_domain,\n        new_email: clean(e.email),\n        moved_at: d.outcome === 'confirmed' ? clean(d.decided_at).slice(0, 10) : '',\n        owner_ae: clean(d.owner.name),\n        owner_ae_email: clean(d.owner.email),\n        owner_ae_slack_id: clean(d.owner.slack_id),\n        linkedin_url: c.linkedin_url,\n        crm_record_url: clean(r.crm_record_url),\n      },\n      alert,\n    };\n  });\n}\n\n// ---- n8n entry ----\nconst rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nconst decisions = $('Score and Route').all().map((i) => i.json);\n// Emails the lookup already found count too, so the email finder can be skipped for them.\nconst emails = [...lookupEmailResults(decisions), ...rows('Find Emails')];\nconst out = finalize($('Config').first().json, decisions, emails, rows('Record Moves'), rows('Enroll in Sequence'));\nreturn out.map((json) => ({ json }));"
       },
       "id": "482c1dd2-29d8-4822-ae62-81174ec6b01e",
       "name": "Finalize",
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4680,
+        6720,
         580
       ]
     },
@@ -1139,7 +1735,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4960,
+        7000,
         380
       ]
     },
@@ -1165,7 +1761,7 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        5200,
+        7240,
         380
       ]
     },
@@ -1178,7 +1774,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4960,
+        7000,
         580
       ]
     },
@@ -1214,7 +1810,7 @@
       "type": "n8n-nodes-base.dataTable",
       "typeVersion": 1.1,
       "position": [
-        5200,
+        7240,
         580
       ]
     },
@@ -1227,7 +1823,7 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        4960,
+        7000,
         780
       ]
     },
@@ -1247,7 +1843,7 @@
       "type": "n8n-nodes-base.executeWorkflow",
       "typeVersion": 1.2,
       "position": [
-        5200,
+        7240,
         780
       ],
       "alwaysOutputData": false
@@ -1299,6 +1895,28 @@
       ]
     },
     "Ensure Cases Table": {
+      "main": [
+        [
+          {
+            "node": "Ensure Lookups Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Lookups Table": {
+      "main": [
+        [
+          {
+            "node": "Ensure Usage Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Usage Table": {
       "main": [
         [
           {
@@ -1397,6 +2015,28 @@
       "main": [
         [
           {
+            "node": "Read Lookup Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Lookup Cache": {
+      "main": [
+        [
+          {
+            "node": "Read Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Usage": {
+      "main": [
+        [
+          {
             "node": "Signals Request",
             "type": "main",
             "index": 0
@@ -1453,7 +2093,7 @@
             "index": 0
           },
           {
-            "node": "Lookup Requests",
+            "node": "Lookup 1 Requests",
             "type": "main",
             "index": 0
           }
@@ -1471,22 +2111,195 @@
         ]
       ]
     },
-    "Lookup Requests": {
+    "Lookup 1 Requests": {
       "main": [
         [
           {
-            "node": "Look Up People",
+            "node": "Use Lookup 1?",
             "type": "main",
             "index": 0
           }
         ]
       ]
     },
-    "Look Up People": {
+    "Use Lookup 1?": {
       "main": [
         [
           {
+            "node": "Look Up 1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lookup 2 Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look Up 1": {
+      "main": [
+        [
+          {
+            "node": "Lookup 2 Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup 2 Requests": {
+      "main": [
+        [
+          {
+            "node": "Use Lookup 2?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Lookup 2?": {
+      "main": [
+        [
+          {
+            "node": "Look Up 2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Lookup 3 Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look Up 2": {
+      "main": [
+        [
+          {
+            "node": "Lookup 3 Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Lookup 3 Requests": {
+      "main": [
+        [
+          {
+            "node": "Use Lookup 3?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Use Lookup 3?": {
+      "main": [
+        [
+          {
+            "node": "Look Up 3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Collect Lookups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Look Up 3": {
+      "main": [
+        [
+          {
+            "node": "Collect Lookups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Collect Lookups": {
+      "main": [
+        [
+          {
+            "node": "Cache Rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Usage Rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Pending Rows",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Budget Alerts",
+            "type": "main",
+            "index": 0
+          },
+          {
             "node": "Prepare Brief",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cache Rows": {
+      "main": [
+        [
+          {
+            "node": "Save Lookup Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Usage Rows": {
+      "main": [
+        [
+          {
+            "node": "Save Usage",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Pending Rows": {
+      "main": [
+        [
+          {
+            "node": "Save Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Budget Alerts": {
+      "main": [
+        [
+          {
+            "node": "Send Budget Alerts",
             "type": "main",
             "index": 0
           }

@@ -20,9 +20,23 @@ function personName(d) {
   return { first_name: clean(c.first_name) || split.first_name, last_name: clean(c.last_name) || split.last_name, full_name: clean(c.full_name) };
 }
 
+// Emails the lookup already found at the new company (Apollo returns these), so the email finder can skip them.
+function lookupEmailResults(decisions) {
+  return (decisions || [])
+    .filter((d) => d.outcome === 'confirmed' && clean(d.candidate.lookup_email) && d.new_company_domain && clean(d.candidate.lookup_email).toLowerCase().endsWith(`@${d.new_company_domain}`))
+    .map((d) => ({
+      contact_id: d.candidate.contact_id,
+      email: clean(d.candidate.lookup_email),
+      status: lower(d.candidate.lookup_email_status) === 'verified' ? 'valid' : 'unknown',
+      confidence: '',
+      source: clean(d.candidate.lookup_source) || 'lookup',
+    }));
+}
+
 function emailRequests(cfg, decisions) {
+  const known = new Set(lookupEmailResults(decisions).map((r) => r.contact_id));
   const reqs = decisions
-    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain)
+    .filter((d) => d.outcome === 'confirmed' && d.new_company_domain && !known.has(d.candidate.contact_id))
     .map((d) => ({ action: 'find_email', contact_id: d.candidate.contact_id, ...personName(d), domain: d.new_company_domain, company: d.new_company }));
   return reqs.length ? reqs : NOOP;
 }
@@ -90,5 +104,5 @@ function sequenceRequests(cfg, decisions, emailResults) {
 }
 
 // @node-only-start
-module.exports = { emailRequests, crmRequests, sequenceRequests, byContact, NOOP };
+module.exports = { emailRequests, crmRequests, sequenceRequests, lookupEmailResults, byContact, NOOP };
 // @node-only-end

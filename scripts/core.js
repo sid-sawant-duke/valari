@@ -1,4 +1,4 @@
-// Generates the core workflows: Daily Run, Digest, Engagement Webhook ("call now") and MCP Server.
+// Generates the core workflows: Daily Run, Digest, Call Now Webhook, MCP Server and Lookup Callback.
 const { inline, uid, TABLES, makeBuilder } = require('./lib');
 const { addInvestigator } = require('./agent');
 
@@ -9,13 +9,15 @@ const x = (col) => col * 240;
 function dailyRun() {
   const b = makeBuilder('core/daily');
   const y0 = 300; // main lane
+  const H = 1800; // section height
 
-  b.sticky('Note: Start here', [x(-2), -420], 620, 1040,
-    `## Valari: Daily Run\n\nFinds past users of your product who changed jobs, confirms each move with an AI agent, scores it, and acts on it: new email, CRM record, sequence, alert.\n\n**This workflow never talks to a vendor directly.** It calls your **connectors** (small workflows, one per tool) by ID.\n\n**Setup (once):**\n1. Import the connectors you need from \`workflows/connectors/\` and set each one up (each has its own note).\n2. Open **Config** and paste each connector's workflow ID (from its URL: \`/workflow/<ID>\`). Leave optional ones blank.\n3. Fill in your product, ICP, personas and team directory.\n4. Add your AI model credential on **Chat Model** (or swap the node for any other chat model).\n5. Click **Execute workflow** to test, then toggle **Active**.\n\nRuns every morning at 7am. The MCP server can also call it for one person.\n\nTracker state lives in two n8n Data Tables, created automatically: \`${TABLES.state.name}\` and \`${TABLES.cases.name}\`.`, 4);
-  b.sticky('Note: 1 Load', [x(1) - 40, -420], x(6) + 40, 1040, `### 1. Load\nWatchlist and accounts from your CRM connector, optional product-user list, saved state, and inbox signals (bounces and "I've left" auto-replies).`, 7);
-  b.sticky('Note: 2 Investigate', [x(7) + 20, -420], x(5) - 40, 1040, `### 2. Investigate\nLooks each person up through the **lookup connector**, then the AI agent weighs the evidence and returns **confirmed**, **verify** or **no_change** with a draft opener.\n\nSwap **Chat Model** for OpenAI, Gemini, Mistral, Ollama or any chat model that supports tools.`, 6);
-  b.sticky('Note: 3 Act', [x(12) + 20, -420], x(7) - 40, 1040, `### 3. Act\nFor confirmed moves: find the new work email, write the new contact and a task to the CRM, and enroll them in a sequence (the rep reviews the first email). Every step is optional: leave its connector ID blank to skip it.`, 5);
-  b.sticky('Note: 4 Save and alert', [x(19) + 20, -420], x(3) + 40, 1040, `### 4. Save and alert\nLogs the case, updates state, and sends alerts through your **alert connector**.\n\nNothing is ever sent to a champion automatically.`, 3);
+  b.sticky('Note: Start here', [x(-2) - 40, -560], 640, H,
+    `## Valari: Daily Run\n\nFinds past users of your product who changed jobs, confirms each move with an AI agent, scores it, and acts on it: new email, CRM record, sequence, alert.\n\n**This workflow never talks to a vendor directly.** It calls your **connectors** (small workflows, one per tool) by ID.\n\n**Setup (once):**\n1. Import the connectors you need from \`workflows/connectors/\` and set each one up (each has its own note).\n2. Open **Config** and paste each connector's workflow ID (from its URL: \`/workflow/<ID>\`). Leave optional ones blank.\n3. Set your lookup tools in order (\`lookup_1\` to \`lookup_3\`) with a monthly credit budget for each.\n4. Fill in your product, ICP, personas and team directory.\n5. Add your AI model credential on **Chat Model** (or swap the node for any other chat model).\n6. Click **Execute workflow** to test, then toggle **Active**.\n\nRuns every morning at 7am. The MCP server and the Lookup Callback can also call it for one person.\n\nState lives in n8n Data Tables, created automatically: \`${TABLES.state.name}\`, \`${TABLES.cases.name}\`, \`${TABLES.lookups.name}\` and \`${TABLES.usage.name}\`.`, 4);
+  b.sticky('Note: 1 Load', [x(1) - 40, -560], x(6) + 120, H, `### 1. Load\nWatchlist and accounts from your CRM connector, optional product-user list, saved state, lookup cache and credit usage, and inbox signals (bounces and "I've left" auto-replies).`, 7);
+  b.sticky('Note: 2 Look up', [x(7) + 100, -560], x(10) - 160, H, `### 2. Look up (waterfall)\nTries up to three lookup tools in order (for example Apollo, then Clay, then People Data Labs) and stops as soon as one finds the person's current job.\n\n**Credit guardrails:** each tool has a monthly budget and pauses at it; a Slack warning goes out at 80%. Recent results are reused instead of paying again, and a tool that found nothing isn't asked about the same person again for 30 days.\n\nClay answers later: those people wait as "pending" and are finished by the **Lookup Callback** workflow.`, 7);
+  b.sticky('Note: 3 Investigate', [x(17) - 60, -560], x(3) + 160, H, `### 3. Investigate\nThe AI agent weighs the evidence and returns **confirmed**, **verify** or **no_change** with a draft opener.\n\nSwap **Chat Model** for OpenAI, Gemini, Mistral, Ollama or any chat model that supports tools.`, 6);
+  b.sticky('Note: 4 Act', [x(20) + 120, -560], x(7) + 40, H, `### 4. Act\nFor confirmed moves: find the new work email (skipped when the lookup already found it), write the new contact and a task to the CRM, and enroll them in a sequence (the rep reviews the first email). Every step is optional: leave its connector ID blank to skip it.`, 5);
+  b.sticky('Note: 5 Save and alert', [x(27) + 180, -560], x(3) + 60, H, `### 5. Save and alert\nLogs the case, updates state, and sends alerts through your **alert connector**.\n\nNothing is ever sent to a champion automatically.`, 3);
 
   // ---- Triggers and config
   b.add('Every Morning', 'n8n-nodes-base.scheduleTrigger', 1.2, [x(-1), y0 - 100], { rule: { interval: [{ field: 'days', triggerAtHour: 7 }] } });
@@ -24,7 +26,18 @@ function dailyRun() {
     crm_connector_id: '',
     product_users_connector_id: '',
     signals_connector_id: '',
-    lookup_connector_id: '',
+    lookup_1_name: 'apollo',
+    lookup_1_connector_id: '',
+    lookup_1_monthly_budget: 500,
+    lookup_2_name: 'clay',
+    lookup_2_connector_id: '',
+    lookup_2_monthly_budget: 200,
+    lookup_3_name: 'people_data_labs',
+    lookup_3_connector_id: '',
+    lookup_3_monthly_budget: 100,
+    lookup_cache_days: 14,
+    lookup_repeat_days: 30,
+    budget_warning_percent: 80,
     email_finder_connector_id: '',
     sequence_connector_id: '',
     alert_connector_id: '',
@@ -42,11 +55,13 @@ function dailyRun() {
     recheck_after_days: 30,
     requested_contact_id: "={{ $json.contact_id || '' }}",
   });
-  b.ensureTable('Ensure State Table', [x(1), y0], TABLES.state);
-  b.ensureTable('Ensure Cases Table', [x(1), y0 + 200], TABLES.cases);
+  b.ensureTable('Ensure State Table', [x(1), y0 - 200], TABLES.state);
+  b.ensureTable('Ensure Cases Table', [x(1), y0], TABLES.cases);
+  b.ensureTable('Ensure Lookups Table', [x(1), y0 + 200], TABLES.lookups);
+  b.ensureTable('Ensure Usage Table', [x(1), y0 + 400], TABLES.usage);
   b.chain('Every Morning', 'Config');
   b.connect('When Called', 'Config');
-  b.chain('Config', 'Ensure State Table', 'Ensure Cases Table');
+  b.chain('Config', 'Ensure State Table', 'Ensure Cases Table', 'Ensure Lookups Table', 'Ensure Usage Table');
 
   // ---- Load
   b.code('Watchlist Request', [x(2), y0], "return [{ json: { action: 'list_champions' } }];", { executeOnce: true });
@@ -57,6 +72,8 @@ function dailyRun() {
   b.ifTrue('Product Users?', [x(4), y0 + 200], "={{ !!$('Config').first().json.product_users_connector_id }}");
   b.callConnector('Get Product Users', [x(5), y0 + 100], 'product_users_connector_id');
   b.readTable('Read State', [x(5), y0 + 300], TABLES.state);
+  b.readTable('Read Lookup Cache', [x(5), y0 + 500], TABLES.lookups);
+  b.readTable('Read Usage', [x(6), y0 + 500], TABLES.usage);
   b.code('Signals Request', [x(6), y0 + 300], "return [{ json: { action: 'get_signals' } }];", { executeOnce: true });
   b.ifTrue('Signals?', [x(6), y0 + 100], "={{ !!$('Config').first().json.signals_connector_id }}");
   b.callConnector('Get Signals', [x(7) - 120, y0 - 60], 'signals_connector_id');
@@ -66,52 +83,90 @@ function dailyRun() {
 const cfg = $('Config').first().json;
 const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);
 const watchlist = buildWatchlist(cfg, rows('Get Watchlist'), rows('Get Product Users'), rows('Read State'));
-const { candidates, skipped } = findCandidates(cfg, watchlist, rows('Get Signals'));
+const found = findCandidates(cfg, watchlist, rows('Get Signals'));
+const candidates = restoreSignals(cfg, found.candidates, rows('Read Lookup Cache'));
+const skipped = found.skipped;
 console.log(\`Watchlist: \${watchlist.length} people. Investigating \${candidates.length}.\`);
 if (skipped.length) console.log('Skipped this run:', skipped);
 return candidates.map((c) => ({ json: c }));`);
-  b.chain('Ensure Cases Table', 'Watchlist Request', 'Get Watchlist', 'Accounts Request', 'Get Accounts', 'Product Users Request', 'Product Users?');
+  b.chain('Ensure Usage Table', 'Watchlist Request', 'Get Watchlist', 'Accounts Request', 'Get Accounts', 'Product Users Request', 'Product Users?');
   b.connect('Product Users?', 'Get Product Users', { output: 0 });
   b.connect('Product Users?', 'Read State', { output: 1 });
-  b.chain('Get Product Users', 'Read State', 'Signals Request', 'Signals?');
+  b.chain('Get Product Users', 'Read State', 'Read Lookup Cache', 'Read Usage', 'Signals Request', 'Signals?');
   b.connect('Signals?', 'Get Signals', { output: 0 });
   b.connect('Signals?', 'Find Candidates', { output: 1 });
   b.connect('Get Signals', 'Find Candidates');
 
-  // ---- Investigate
-  b.code('Suspect Rows', [x(8), y0 - 200], `// People with an inbox signal are marked "suspect" first, so a failed run is retried instead of lost.
+  // ---- Look up: waterfall over up to three lookup connectors
+  b.code('Suspect Rows', [x(8), y0 - 340], `// People with an inbox signal are marked "suspect" first, so a failed run is retried instead of lost.
 const today = new Date().toISOString().slice(0, 10);
 return $input.all()
   .filter((i) => i.json.trigger === 'signal')
   .map((i) => ({ json: { contact_id: i.json.contact_id, full_name: i.json.full_name, status: 'suspect', last_checked: today } }));`);
-  b.upsertRows('Save Suspects', [x(9), y0 - 200], TABLES.state);
-  b.code('Lookup Requests', [x(8), y0 + 160], `return $input.all().map((i) => ({ json: {
-  action: 'lookup_person',
-  contact_id: i.json.contact_id,
-  full_name: i.json.full_name,
-  first_name: i.json.first_name,
-  last_name: i.json.last_name,
-  work_email: i.json.work_email,
-  linkedin_url: i.json.linkedin_url,
-  last_company: i.json.last_company,
-  last_company_domain: i.json.last_company_domain,
-} }));`);
-  b.callConnector('Look Up People', [x(9), y0 + 160], 'lookup_connector_id');
-  b.code('Prepare Brief', [x(10), y0 + 160], `// Joins each candidate with their lookup result (connectors return contact_id).
-const results = new Map($input.all().map((i) => i.json).filter((j) => j && j.contact_id).map((j) => [String(j.contact_id), j]));
-return $('Find Candidates').all().map((i) => {
-  const c = i.json;
-  const r = results.get(String(c.contact_id)) || { found: false, note: 'Lookup connector returned nothing for this person.' };
-  const { contact_id, ...lookup } = r;
-  return { json: { ...c, lookup_json: JSON.stringify(lookup, null, 1) } };
-});`);
+  b.upsertRows('Save Suspects', [x(9), y0 - 340], TABLES.state);
   b.chain('Find Candidates', 'Suspect Rows', 'Save Suspects');
-  b.connect('Find Candidates', 'Lookup Requests');
-  b.chain('Lookup Requests', 'Look Up People', 'Prepare Brief');
 
-  addInvestigator(b, 'Prepare Brief', x(11), y0 + 160);
+  const W = [S, 'src/core/waterfall.js'];
+  const rowsFn = "const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);";
+  const priorNodes = [];
+  for (const i of [1, 2, 3]) {
+    const c = 8 + (i - 1) * 2;
+    const req = `Lookup ${i} Requests`;
+    const gate = `Use Lookup ${i}?`;
+    const call = `Look Up ${i}`;
+    b.code(req, [x(c), y0 + 160], `${inline(...W)}
 
-  b.code('Score and Route', [x(12) + 120, y0 + 160], `${inline(S, 'src/core/score-and-route.js')}
+// ---- n8n entry ----
+// Who still needs looking up after the earlier tools, within this tool's monthly budget.
+const cfg = $('Config').first().json;
+${rowsFn}
+const candidates = $('Find Candidates').all().map((i) => i.json);
+const prior = [${priorNodes.map((n) => `...rows('${n}')`).join(', ')}];
+const { requests, budget_skipped, slot } = planSlot(cfg, ${i}, candidates, rows('Read Lookup Cache'), rows('Read Usage'), prior);
+if (slot && budget_skipped.length) console.log(\`\${slot.name} is at its monthly budget. Skipped:\`, budget_skipped);
+return requests.map((json) => ({ json }));`);
+    b.ifTrue(gate, [x(c + 1), y0 + 320], `={{ $json.action !== 'noop' && !!$('Config').first().json.lookup_${i}_connector_id }}`);
+    b.callConnector(call, [x(c + 1), y0], `lookup_${i}_connector_id`);
+    if (i === 1) b.connect('Find Candidates', req);
+    b.connect(req, gate);
+    b.connect(gate, call, { output: 0 });
+    priorNodes.push(call);
+    // Both the "skip" branch and the call lead to the next step.
+    const next = i < 3 ? `Lookup ${i + 1} Requests` : 'Collect Lookups';
+    b.connect(gate, next, { output: 1 });
+    b.connect(call, next);
+  }
+  b.code('Collect Lookups', [x(14), y0 + 160], `${inline(...W)}
+
+// ---- n8n entry ----
+// Picks each person's answer and works out the cache, credit usage and budget warnings.
+const cfg = $('Config').first().json;
+${rowsFn}
+const candidates = $('Find Candidates').all().map((i) => i.json);
+const out = collectLookups(cfg, candidates, rows('Read Lookup Cache'), rows('Read Usage'), [rows('Look Up 1'), rows('Look Up 2'), rows('Look Up 3')]);
+if (out.pending.length) console.log('Waiting on async lookups (finished by the Lookup Callback):', out.pending);
+return [{ json: out }];`);
+  b.code('Cache Rows', [x(15), y0 - 340], "return $('Collect Lookups').first().json.cache_rows.map((json) => ({ json }));");
+  b.upsertRows('Save Lookup Cache', [x(16), y0 - 340], TABLES.lookups);
+  b.code('Usage Rows', [x(15), y0 - 140], "return $('Collect Lookups').first().json.usage_rows.map((json) => ({ json }));");
+  b.upsertRows('Save Usage', [x(16), y0 - 140], TABLES.usage, 'usage_key');
+  b.code('Pending Rows', [x(15), y0 + 560], `// People waiting on an async lookup stay "suspect"; if the answer never comes, they're retried in 2 days.
+const today = new Date().toISOString().slice(0, 10);
+return $('Collect Lookups').first().json.pending.map((contact_id) => ({ json: { contact_id, status: 'suspect', last_checked: today } }));`);
+  b.upsertRows('Save Pending', [x(16), y0 + 560], TABLES.state);
+  b.code('Budget Alerts', [x(15), y0 + 760], "return $('Collect Lookups').first().json.alerts.map((json) => ({ json }));");
+  b.callConnector('Send Budget Alerts', [x(16), y0 + 760], 'alert_connector_id', { alwaysOutputData: false });
+  b.code('Prepare Brief', [x(17), y0 + 160], "return $('Collect Lookups').first().json.briefs.map((json) => ({ json }));");
+  b.chain('Collect Lookups', 'Cache Rows', 'Save Lookup Cache');
+  b.chain('Collect Lookups', 'Usage Rows', 'Save Usage');
+  b.chain('Collect Lookups', 'Pending Rows', 'Save Pending');
+  b.chain('Collect Lookups', 'Budget Alerts', 'Send Budget Alerts');
+  b.connect('Collect Lookups', 'Prepare Brief');
+
+  // ---- Investigate
+  addInvestigator(b, 'Prepare Brief', x(18) + 40, y0 + 160);
+
+  b.code('Score and Route', [x(20) + 240, y0 + 160], `${inline(S, 'src/core/score-and-route.js')}
 
 // ---- n8n entry ----
 const cfg = $('Config').first().json;
@@ -134,21 +189,22 @@ return out;`);
 
   // ---- Act (each step optional)
   const A = [S, 'src/core/actions.js'];
-  const results = "const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);";
-  b.code('Email Requests', [x(13) + 120, y0 + 160], `${inline(...A)}\n\n// ---- n8n entry ----\nreturn emailRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json)).map((json) => ({ json }));`);
-  b.ifTrue('Find Emails?', [x(14) + 120, y0 + 160], "={{ $json.action !== 'noop' && !!$('Config').first().json.email_finder_connector_id }}");
-  b.callConnector('Find Emails', [x(15) + 120, y0], 'email_finder_connector_id');
-  b.code('CRM Requests', [x(15) + 120, y0 + 200], `${inline(...A)}\n\n// ---- n8n entry ----\n${results}\nreturn crmRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json), rows('Find Emails')).map((json) => ({ json }));`);
-  b.ifTrue('Write to CRM?', [x(16) + 120, y0 + 200], "={{ $json.action !== 'noop' && !!$('Config').first().json.crm_connector_id }}");
-  b.callConnector('Record Moves', [x(17) + 120, y0 + 40], 'crm_connector_id');
-  b.code('Sequence Requests', [x(17) + 120, y0 + 240], `${inline(...A)}\n\n// ---- n8n entry ----\n${results}\nreturn sequenceRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json), rows('Find Emails')).map((json) => ({ json }));`);
-  b.ifTrue('Enroll?', [x(18) + 120, y0 + 240], "={{ $json.action !== 'noop' && !!$('Config').first().json.sequence_connector_id }}");
-  b.callConnector('Enroll in Sequence', [x(19) + 120, y0 + 80], 'sequence_connector_id');
-  b.code('Finalize', [x(19) + 120, y0 + 280], `${inline(...A, 'src/core/finalize.js')}
+  const results = "const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && j.contact_id) : []);\nconst decisions = $('Score and Route').all().map((i) => i.json);\n// Emails the lookup already found count too, so the email finder can be skipped for them.\nconst emails = [...lookupEmailResults(decisions), ...rows('Find Emails')];";
+  const ax = (c) => x(c + 8) + 240;
+  b.code('Email Requests', [ax(13), y0 + 160], `${inline(...A)}\n\n// ---- n8n entry ----\nreturn emailRequests($('Config').first().json, $('Score and Route').all().map((i) => i.json)).map((json) => ({ json }));`);
+  b.ifTrue('Find Emails?', [ax(14), y0 + 160], "={{ $json.action !== 'noop' && !!$('Config').first().json.email_finder_connector_id }}");
+  b.callConnector('Find Emails', [ax(15), y0], 'email_finder_connector_id');
+  b.code('CRM Requests', [ax(15), y0 + 200], `${inline(...A)}\n\n// ---- n8n entry ----\n${results}\nreturn crmRequests($('Config').first().json, decisions, emails).map((json) => ({ json }));`);
+  b.ifTrue('Write to CRM?', [ax(16), y0 + 200], "={{ $json.action !== 'noop' && !!$('Config').first().json.crm_connector_id }}");
+  b.callConnector('Record Moves', [ax(17), y0 + 40], 'crm_connector_id');
+  b.code('Sequence Requests', [ax(17), y0 + 240], `${inline(...A)}\n\n// ---- n8n entry ----\n${results}\nreturn sequenceRequests($('Config').first().json, decisions, emails).map((json) => ({ json }));`);
+  b.ifTrue('Enroll?', [ax(18), y0 + 240], "={{ $json.action !== 'noop' && !!$('Config').first().json.sequence_connector_id }}");
+  b.callConnector('Enroll in Sequence', [ax(19), y0 + 80], 'sequence_connector_id');
+  b.code('Finalize', [ax(19), y0 + 280], `${inline(...A, 'src/core/finalize.js')}
 
 // ---- n8n entry ----
 ${results}
-const out = finalize($('Config').first().json, $('Score and Route').all().map((i) => i.json), rows('Find Emails'), rows('Record Moves'), rows('Enroll in Sequence'));
+const out = finalize($('Config').first().json, decisions, emails, rows('Record Moves'), rows('Enroll in Sequence'));
 return out.map((json) => ({ json }));`);
   b.connect('Score and Route', 'Email Requests');
   b.connect('Email Requests', 'Find Emails?');
@@ -165,12 +221,12 @@ return out.map((json) => ({ json }));`);
   b.connect('Enroll in Sequence', 'Finalize');
 
   // ---- Save and alert
-  b.code('Case Rows', [x(20) + 160, y0 + 80], 'return $input.all().map((i) => ({ json: i.json.case_row }));');
-  b.insertRows('Save Cases', [x(21) + 160, y0 + 80], TABLES.cases);
-  b.code('State Rows', [x(20) + 160, y0 + 280], 'return $input.all().map((i) => ({ json: i.json.state_row }));');
-  b.upsertRows('Save State', [x(21) + 160, y0 + 280], TABLES.state);
-  b.code('Alert Requests', [x(20) + 160, y0 + 480], 'return $input.all().filter((i) => i.json.alert).map((i) => ({ json: i.json.alert }));');
-  b.callConnector('Send Alerts', [x(21) + 160, y0 + 480], 'alert_connector_id', { alwaysOutputData: false });
+  b.code('Case Rows', [ax(20) + 40, y0 + 80], 'return $input.all().map((i) => ({ json: i.json.case_row }));');
+  b.insertRows('Save Cases', [ax(21) + 40, y0 + 80], TABLES.cases);
+  b.code('State Rows', [ax(20) + 40, y0 + 280], 'return $input.all().map((i) => ({ json: i.json.state_row }));');
+  b.upsertRows('Save State', [ax(21) + 40, y0 + 280], TABLES.state);
+  b.code('Alert Requests', [ax(20) + 40, y0 + 480], 'return $input.all().filter((i) => i.json.alert).map((i) => ({ json: i.json.alert }));');
+  b.callConnector('Send Alerts', [ax(21) + 40, y0 + 480], 'alert_connector_id', { alwaysOutputData: false });
   b.chain('Finalize', 'Case Rows', 'Save Cases');
   b.chain('Finalize', 'State Rows', 'Save State');
   b.chain('Finalize', 'Alert Requests', 'Send Alerts');
@@ -248,9 +304,45 @@ function mcp() {
   return b.workflow('Valari: MCP Server');
 }
 
+// ------------------------------------------------------------------ Lookup callback (async lookups such as Clay)
+function lookupCallback() {
+  const b = makeBuilder('core/lookup-callback');
+  b.sticky('Note: Callback', [-560, -360], 600, 560, `## Valari: Lookup Callback\n\nSome lookup tools answer later instead of right away. **Clay** works this way: Valari sends a person to a Clay table, Clay runs its waterfall, and an HTTP API column posts the result here.\n\nThis workflow saves the result to the lookup cache and immediately re-runs the Daily Run for that person, which picks up the cached answer without spending another credit.\n\n**Setup:**\n1. Add a Header Auth credential on the **Webhook** and use the same header in Clay's HTTP API column.\n2. In **Config**, paste the Daily Run's workflow ID.\n3. Activate, and put the Production URL in the Clay connector's \`callback_url\`.\n\nSend at least \`valari_contact_id\` plus the current \`company_name\`, \`company_domain\`, \`job_title\` and (optionally) \`job_start_date\`, \`linkedin_url\`, \`work_email\`.`, 4);
+  b.add('Webhook', 'n8n-nodes-base.webhook', 2, [-480, 300], { httpMethod: 'POST', path: 'valari-lookup-callback', authentication: 'headerAuth', responseMode: 'onReceived', options: {} }, { webhookId: uid('core/lookup-callback/webhook') });
+  b.config('Config', [-240, 300], { daily_run_workflow_id: '' });
+  b.ensureTable('Ensure Lookups Table', [0, 300], TABLES.lookups);
+  b.readTable('Read Lookup Cache', [240, 300], TABLES.lookups);
+  b.code('Normalize Result', [480, 300], `${inline(S, 'src/core/callback.js')}
+
+// ---- n8n entry ----
+const existing = $input.all().map((i) => i.json).filter((r) => r && r.contact_id);
+const row = normalizeCallback($('Webhook').first().json, existing);
+if (!row) { console.log('Callback without valari_contact_id, ignored'); return []; }
+return [{ json: row }];`);
+  b.upsertRows('Save Lookup Result', [720, 300], TABLES.lookups);
+  b.code('Contact To Investigate', [960, 300], "return [{ json: { contact_id: $('Normalize Result').first().json.contact_id } }];");
+  b.add('Investigate Now', 'n8n-nodes-base.executeWorkflow', 1.2, [1200, 300], {
+    source: 'database',
+    workflowId: { __rl: true, mode: 'id', value: "={{ $('Config').first().json.daily_run_workflow_id }}" },
+    workflowInputs: {
+      mappingMode: 'defineBelow',
+      value: { contact_id: '={{ $json.contact_id }}' },
+      matchingColumns: [],
+      schema: [{ id: 'contact_id', displayName: 'contact_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string', removed: false }],
+      attemptToConvertTypes: false,
+      convertFieldsToString: true,
+    },
+    mode: 'each',
+    options: { waitForSubWorkflow: false },
+  });
+  b.chain('Webhook', 'Config', 'Ensure Lookups Table', 'Read Lookup Cache', 'Normalize Result', 'Save Lookup Result', 'Contact To Investigate', 'Investigate Now');
+  return b.workflow('Valari: Lookup Callback');
+}
+
 module.exports = {
   'core/1-daily-run.json': dailyRun,
   'core/2-digest.json': digest,
   'core/3-call-now-webhook.json': engagement,
   'core/4-mcp-server.json': mcp,
+  'core/5-lookup-callback.json': lookupCallback,
 };

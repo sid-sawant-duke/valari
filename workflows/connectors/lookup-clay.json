@@ -1,0 +1,169 @@
+{
+  "name": "Connector: Clay (lookup)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Clay (lookup, answers later)\n\nSends each person to a Clay table, where Clay's waterfall checks its data providers. Clay can't answer right away, so this connector returns **pending**; Clay posts the result to the **Lookup Callback** workflow, which finishes the investigation.\n\nEach person sent counts as one credit against this slot's monthly budget. Valari only sends people the earlier lookup tools couldn't find, and never sends the same person twice within 30 days.\n\n**Setup:**\n1. In Clay, create a table with a **Webhook** source and copy its URL into `clay_webhook_url`. If the webhook has an auth token, create a Header Auth credential (name `x-clay-webhook-auth`) on **Send to Clay**; otherwise set its authentication to None.\n2. Add your enrichment columns (title, company, company domain, start date, work email).\n3. Add an **HTTP API** column that POSTs `valari_contact_id`, `company_name`, `company_domain`, `job_title`, `job_start_date`, `linkedin_url` and `work_email` to the `callback_url` sent with each row.\n4. Paste the Lookup Callback's Production URL into `callback_url` below.\n5. Copy this workflow's ID into the core Config as `lookup_2_connector_id` (slot name `clay`).\n\n**Action:** lookup_person.\n\n**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.\n\nContract: docs/connectors.md in the repo.",
+        "height": 880,
+        "width": 600,
+        "color": 4
+      },
+      "id": "d8391dfb-e2ce-484a-ae35-802d424c13db",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "55d9514c-6fd9-4640-a23f-7dd1b6aec109",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "1bee4852-99a6-4632-adaa-cd9164829666",
+              "name": "clay_webhook_url",
+              "value": "PASTE_YOUR_CLAY_TABLE_WEBHOOK_URL",
+              "type": "string"
+            },
+            {
+              "id": "00f5a3b2-c565-4b9e-a2d9-bf1a682067a9",
+              "name": "callback_url",
+              "value": "PASTE_YOUR_VALARI_LOOKUP_CALLBACK_URL",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "283c6362-c8a8-4149-a2cc-2ce3d7b64925",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter((i) => i.json.action === 'lookup_person');"
+      },
+      "id": "611f3f99-c496-44f5-a7b4-403b5f0ad46b",
+      "name": "Keep Lookups",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "method": "POST",
+        "url": "={{ $json.clay_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ valari_contact_id: $json.contact_id, full_name: $json.full_name, first_name: $json.first_name, last_name: $json.last_name, work_email: $json.work_email, linkedin_url: $json.linkedin_url, last_company: $json.last_company, last_company_domain: $json.last_company_domain, last_title: $json.last_title, callback_url: $json.callback_url }) }}"
+      },
+      "id": "4f5ccf5e-903c-444f-a0b5-84b233617824",
+      "name": "Send to Clay",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const req = $('Keep Lookups').item.json;\nconst failed = !!$json.error;\nreturn { json: {\n  contact_id: req.contact_id,\n  provider: 'clay',\n  found: false,\n  pending: !failed,\n  credits_used: failed ? 0 : 1,\n  note: failed ? 'Lookup failed: could not send to Clay (' + String($json.error.message || $json.error).slice(0, 160) + ')' : 'Sent to Clay. Waiting for the result.',\n} };"
+      },
+      "id": "a66a2a2c-e5fc-4520-ae1e-3cbd715f9b6a",
+      "name": "Mark Pending",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Keep Lookups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Lookups": {
+      "main": [
+        [
+          {
+            "node": "Send to Clay",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send to Clay": {
+      "main": [
+        [
+          {
+            "node": "Mark Pending",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

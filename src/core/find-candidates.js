@@ -2,7 +2,7 @@
 // Pure function: tested in test/, inlined into the "Find Candidates" Code node.
 
 // @node-only-start
-const { clean, lower, truthy } = require('./shared');
+const { clean, lower, truthy, parseJson } = require('./shared');
 // @node-only-end
 
 function findCandidates(cfg, champions, messages, nowInput) {
@@ -86,6 +86,23 @@ function findCandidates(cfg, champions, messages, nowInput) {
   };
 }
 
+// A manual run for someone whose lookup was still in progress (the Lookup Callback re-runs people this way)
+// keeps the bounce or auto-reply that started it, so "nothing found" still ends as [VERIFY], not "no change".
+// Only signals from the last lookup_repeat_days (default 30) count.
+function restoreSignals(cfg, candidates, cacheRows, nowInput) {
+  const now = nowInput ? new Date(nowInput) : new Date();
+  const maxDays = Number(cfg.lookup_repeat_days ?? 30);
+  return (candidates || []).map((c) => {
+    if (c.trigger !== 'manual') return c;
+    const row = (cacheRows || []).find((r) => r && clean(r.contact_id) === c.contact_id);
+    const saved = row ? parseJson(row.signal_json, null) : null;
+    if (!saved || !['signal', 'retry', 'recheck'].includes(saved.trigger)) return c;
+    const at = new Date(clean(saved.signal_date) || clean(saved.saved_at));
+    if (isNaN(at.getTime()) || (now - at) / 86400000 > maxDays) return c;
+    return { ...c, trigger: saved.trigger, signal: saved.signal, signal_evidence: saved.signal_evidence, signal_date: saved.signal_date, requested: true };
+  });
+}
+
 // @node-only-start
-module.exports = { findCandidates };
+module.exports = { findCandidates, restoreSignals };
 // @node-only-end

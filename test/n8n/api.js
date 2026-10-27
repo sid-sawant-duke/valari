@@ -36,5 +36,9 @@ async function runWorkflow(w, trigger, pinData) {
   const data = typeof ex.data === 'string' ? parse(ex.data) : ex.data;
   return { status: ex.status, data, runData: data.resultData.runData, error: data.resultData.error };
 }
+// n8n 2.x: sub-workflows called from a scheduled or other non-manual run must be published.
+async function publish(w) {
+  return api('POST', `/rest/workflows/${w.id}/activate`, { versionId: w.versionId });
+}
 const out = (runData, name, run = 0, output = 0) => (runData[name]?.[run]?.data?.main?.[output] || []).map((i) => i.json);
-module.exports = { api, login, createWorkflow, runWorkflow, out };
+module.exports = { api, login, createWorkflow, runWorkflow, out, publish };
