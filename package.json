@@ -1,0 +1,30 @@
+{
+  "name": "valari",
+  "version": "0.2.0",
+  "description": "Open source n8n workflows that catch when your product's past users change jobs, confirm the move with an AI agent, and act on it: new email, CRM record, sequence, and a 'call now' alert.",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "test": "node --test test/*.test.js",
+    "build": "node scripts/build-workflows.js && python3 scripts/build-sheet.py sheet/valari-template.xlsx",
+    "check": "node scripts/build-workflows.js --check",
+    "test:n8n": "node test/n8n/run.js"
+  },
+  "devDependencies": {
+    "flatted": "^3.3.1"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "keywords": [
+    "n8n",
+    "gtm",
+    "sales",
+    "job-change",
+    "champion-tracking",
+    "salesforce",
+    "salesloft",
+    "ai-agent",
+    "mcp"
+  ]
+}

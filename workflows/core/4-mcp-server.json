@@ -1,0 +1,173 @@
+{
+  "name": "Valari: MCP Server",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Valari: MCP server\n\nLets Claude, ChatGPT, Cursor or any MCP client ask about champion moves and trigger an investigation.\n\n**Setup:**\n1. Run the Daily Run once first (it creates the data tables).\n2. In **investigate_contact**, pick the **Valari: Daily Run** workflow. If **contact_id** is blank, click the AI sparkle next to it.\n3. Add a Bearer Auth credential on the trigger, activate, and add the Production URL to your AI client as a remote MCP server.",
+        "height": 480,
+        "width": 600,
+        "color": 4
+      },
+      "id": "be218331-5b4f-4c89-a0eb-93ff94767d92",
+      "name": "Note: MCP",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "path": "valari",
+        "authentication": "bearerAuth"
+      },
+      "id": "937a778c-823a-456a-a1ff-aad0f496cd6b",
+      "name": "MCP Server",
+      "type": "@n8n/n8n-nodes-langchain.mcpTrigger",
+      "typeVersion": 2,
+      "position": [
+        -200,
+        200
+      ],
+      "webhookId": "0085002b-d2aa-463e-a9ce-f9e16844914c"
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Returns the 200 most recent cases: who was investigated, when, the outcome (confirmed, verify, no_change), old and new company, new title, persona, score, priority, evidence, new email, CRM record, sequence status, draft opener and owner. Use it for questions like \"who changed jobs this month\" or \"which [VERIFY] cases are open\".",
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_cases"
+        },
+        "returnAll": false,
+        "limit": 200,
+        "orderBy": true,
+        "orderByColumn": "createdAt",
+        "orderByDirection": "DESC"
+      },
+      "id": "201368ff-2093-450e-a339-e383aa8e17f8",
+      "name": "list_cases",
+      "type": "n8n-nodes-base.dataTableTool",
+      "typeVersion": 1.1,
+      "position": [
+        -420,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "descriptionType": "manual",
+        "toolDescription": "Returns the tracker state per champion: contact_id, name, status (active, suspect, verify, moved), current company and title if moved, new email, owner, next recheck date. Use it to find a contact_id before calling investigate_contact.",
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_state"
+        },
+        "returnAll": false,
+        "limit": 200,
+        "orderBy": true,
+        "orderByColumn": "createdAt",
+        "orderByDirection": "DESC"
+      },
+      "id": "33446ace-af3a-4c3f-a520-ba3ca6fe7001",
+      "name": "list_tracked",
+      "type": "n8n-nodes-base.dataTableTool",
+      "typeVersion": 1.1,
+      "position": [
+        -200,
+        440
+      ]
+    },
+    {
+      "parameters": {
+        "description": "Investigates one champion right now: checks whether they changed jobs, logs a case, and alerts their owner if they moved. Input: the contact_id (or their old work email). Uses one lookup credit, so only call it when asked. Afterwards call list_cases to read the result.",
+        "workflowId": {
+          "__rl": true,
+          "value": "",
+          "mode": "list"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contact_id": "={{ $fromAI('contact_id', 'The contact_id of the champion to investigate, or their old work email', 'string') }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "contact_id",
+              "displayName": "contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        }
+      },
+      "id": "9271051b-532a-4624-a764-cdfc76bc7f0e",
+      "name": "investigate_contact",
+      "type": "@n8n/n8n-nodes-langchain.toolWorkflow",
+      "typeVersion": 2.2,
+      "position": [
+        20,
+        440
+      ]
+    }
+  ],
+  "connections": {
+    "list_cases": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "list_tracked": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "investigate_contact": {
+      "ai_tool": [
+        [
+          {
+            "node": "MCP Server",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

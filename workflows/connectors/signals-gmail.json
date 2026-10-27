@@ -1,0 +1,140 @@
+{
+  "name": "Connector: Gmail (signals)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Gmail (signals)\n\nFinds bounces and \"no longer with the company\" auto-replies.\n\n**Setup:**\n1. Add a Gmail credential for the inbox your reps send from. If each rep sends from their own inbox, have them forward bounce notices to one shared inbox, or duplicate this connector per inbox.\n2. Copy this workflow's ID into the core Config as `signals_connector_id`.\n\n**Action:** get_signals.\n\nContract: docs/connectors.md in the repo.",
+        "height": 520,
+        "width": 600,
+        "color": 4
+      },
+      "id": "6683c22b-d9bb-492a-a6da-f6b5b5c18cf1",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "b0fe17e1-9959-4c37-a10a-8f46dac903c1",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b6eb51bf-e4ec-468c-a19b-56dc80f21fa9",
+              "name": "gmail_search_query",
+              "value": "newer_than:3d (from:mailer-daemon OR from:postmaster OR subject:(\"delivery status notification\" OR undeliverable OR \"undelivered mail\" OR \"mail delivery failed\" OR \"returned mail\" OR \"delivery has failed\") OR \"no longer with\" OR \"has left the company\" OR \"no longer employed\" OR \"is no longer\")",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "038d04c7-e966-4333-af00-9648d13ada1b",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": false,
+        "limit": 100,
+        "simple": false,
+        "filters": {
+          "q": "={{ $('Config').first().json.gmail_search_query }}"
+        },
+        "options": {}
+      },
+      "id": "9ea570f5-67c5-427d-acfc-a98da636dc8d",
+      "name": "Search Inbox",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        0,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small mapping helpers for the Gmail, Hunter and Salesloft connectors. Inlined into their Code nodes.\n\n// Gmail (raw format) → the standard signal message.\nfunction normalizeGmail(m) {\n  const clean = (v) => String(v ?? '').trim();\n  if (!m || typeof m !== 'object' || !m.id) return null;\n  return {\n    id: clean(m.id),\n    subject: clean(m.subject || m.Subject),\n    from: clean((m.from && (m.from.text || (m.from.value && m.from.value[0] && m.from.value[0].address))) || m.From),\n    text: clean(m.text || m.snippet).slice(0, 4000),\n    date: clean(m.date),\n    headers: m.headers && typeof m.headers === 'object' ? m.headers : {},\n  };\n}\n\n// Hunter Email Finder response → the standard email result.\nfunction mapHunter(req, res) {\n  const clean = (v) => String(v ?? '').trim();\n  const d = (res && res.data) || {};\n  const email = clean(d.email);\n  const v = clean(d.verification && d.verification.status).toLowerCase();\n  const status = !email ? '' : v === 'valid' ? 'valid' : v === 'invalid' ? 'invalid' : v === 'accept_all' ? 'risky' : 'unknown';\n  return {\n    contact_id: clean(req.contact_id),\n    email,\n    confidence: email && d.score !== undefined && d.score !== null ? Number(d.score) : '',\n    status,\n    source: 'hunter',\n    error: res && res.error ? clean(res.error.message || res.error) : '',\n  };\n}\n\n// Salesloft: pick the cadence for each enroll request, or say why it's skipped.\n// cadenceIds: { \"net_new\": 123, \"lost_deal\": 456, \"open_deal\": 789, \"customer\": 101, \"default\": 999 }\nfunction planSalesloft(requests, cadenceIds, userIdsByEmail) {\n  const clean = (v) => String(v ?? '').trim();\n  const cads = cadenceIds && typeof cadenceIds === 'object' ? cadenceIds : {};\n  const users = {};\n  for (const [k, v] of Object.entries(userIdsByEmail || {})) users[k.toLowerCase()] = v;\n  return (requests || [])\n    .filter((r) => r && r.action === 'enroll')\n    .map((r) => {\n      const cadence = cads[r.cadence_key] ?? cads.default;\n      const cadenceId = cadence && typeof cadence === 'object' ? clean(cadence.id) : clean(cadence);\n      const cadenceName = cadence && typeof cadence === 'object' ? clean(cadence.name) : '';\n      return {\n        ...r,\n        cadence_id: cadenceId,\n        cadence_name: cadenceName || cadenceId,\n        user_id: clean(r.owner_sequence_user_id) || clean(users[clean(r.owner_email).toLowerCase()]),\n        skip_reason: !cadenceId ? `no cadence set for \"${r.cadence_key}\"` : !clean(r.email) ? 'no email' : '',\n      };\n    });\n}\n\n// ---- n8n entry ----\nreturn $input.all().map((i) => normalizeGmail(i.json)).filter(Boolean).map((json) => ({ json }));"
+      },
+      "id": "47543be8-8975-41da-a10e-94a7746caeb0",
+      "name": "Normalize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        240,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Search Inbox",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search Inbox": {
+      "main": [
+        [
+          {
+            "node": "Normalize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

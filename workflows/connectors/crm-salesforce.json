@@ -1,0 +1,671 @@
+{
+  "name": "Connector: Salesforce (CRM)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Salesforce (CRM)\n\nSupplies the watchlist and accounts, and records confirmed moves.\n\n**Setup:**\n1. Add a Salesforce credential to every Salesforce node.\n2. In Salesforce, create a Campaign named **Valari** and add your champions as members. Use member statuses **Buyer**, **Champion** and **User** to set each person's role. (Or edit `soql_champions` in **Config** to select contacts any way you like, then fix **Map Champions**.)\n3. Optional: set `instance_url` (e.g. https://acme.my.salesforce.com) so alerts link to new records.\n4. Copy this workflow's ID into the core **Config** as `crm_connector_id`.\n\n**Actions:** list_champions, list_accounts, record_move (creates a Contact on the account if it exists, otherwise a Lead, plus a Task for the owner).\n\nContract: docs/connectors.md in the repo.",
+        "height": 640,
+        "width": 600,
+        "color": 4
+      },
+      "id": "cc477ca0-daf4-4241-ad95-5612f12eecc3",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "014896bc-0916-4a52-ac4a-1e28259019dc",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "cddac2ae-f785-430a-a14d-18c1f0ac159a",
+              "name": "soql_champions",
+              "value": "SELECT ContactId, Status, Contact.FirstName, Contact.LastName, Contact.Email, Contact.Title, Contact.Description, Contact.HasOptedOutOfEmail, Contact.Account.Name, Contact.Account.Website, Contact.OwnerId, Contact.Owner.Name, Contact.Owner.Email FROM CampaignMember WHERE Campaign.Name = 'Valari' AND ContactId != null",
+              "type": "string"
+            },
+            {
+              "id": "33aaa2df-1c72-4677-aeb3-101f82a34adb",
+              "name": "soql_customer_accounts",
+              "value": "SELECT Id, Name, Website, OwnerId, Owner.Name, Owner.Email FROM Account WHERE Type LIKE 'Customer%'",
+              "type": "string"
+            },
+            {
+              "id": "b04022ea-3e61-47b9-a28e-95fd3daf0555",
+              "name": "soql_opportunities",
+              "value": "SELECT AccountId, Account.Name, Account.Website, OwnerId, Owner.Name, Owner.Email, IsClosed, IsWon FROM Opportunity WHERE IsClosed = false OR (IsWon = false AND CloseDate = LAST_N_DAYS:730)",
+              "type": "string"
+            },
+            {
+              "id": "affafaec-e851-4ef8-a5db-381e8457ceb7",
+              "name": "task_status",
+              "value": "Not Started",
+              "type": "string"
+            },
+            {
+              "id": "d5a42df5-aef7-467e-a4bc-adc575048790",
+              "name": "lead_source",
+              "value": "Valari",
+              "type": "string"
+            },
+            {
+              "id": "cdcdaf0f-dbe4-44bc-ac19-388126b46a2e",
+              "name": "instance_url",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "e30c01e7-d954-48a7-ae19-e239caece333",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "3bc1796a-ebbf-4e17-a849-e18e2bbe3410",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_champions",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_champions"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "e13fcccb-759d-49df-abf3-60678483ce09",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_accounts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_accounts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "5fff68eb-8c44-4ef3-a875-496ef6668948",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "record_move",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "record_move"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1294a46a-0490-48a8-aea6-e4d68a6ac8d1",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "operation": "query",
+        "query": "={{ $('Config').first().json.soql_champions }}"
+      },
+      "id": "157c487d-d669-4f97-abb8-ed8c09ed61fb",
+      "name": "Query Champions",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        260,
+        160
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "Map Champions-contact_id",
+              "name": "contact_id",
+              "value": "={{ $json.ContactId || $json.Id || \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-first_name",
+              "name": "first_name",
+              "value": "={{ $json.Contact?.FirstName ?? $json.FirstName ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_name",
+              "name": "last_name",
+              "value": "={{ $json.Contact?.LastName ?? $json.LastName ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-work_email",
+              "name": "work_email",
+              "value": "={{ $json.Contact?.Email ?? $json.Email ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-linkedin_url",
+              "name": "linkedin_url",
+              "value": "={{ \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_title",
+              "name": "last_title",
+              "value": "={{ $json.Contact?.Title ?? $json.Title ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_company",
+              "name": "last_company",
+              "value": "={{ $json.Contact?.Account?.Name ?? $json.Account?.Name ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_company_domain",
+              "name": "last_company_domain",
+              "value": "={{ $json.Contact?.Account?.Website ?? $json.Account?.Website ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-role_type",
+              "name": "role_type",
+              "value": "={{ ($json.Status || \"user\").toLowerCase() }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-owner_crm_id",
+              "name": "owner_crm_id",
+              "value": "={{ $json.Contact?.OwnerId ?? $json.OwnerId ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-owner_ae",
+              "name": "owner_ae",
+              "value": "={{ $json.Contact?.Owner?.Name ?? $json.Owner?.Name ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-owner_ae_email",
+              "name": "owner_ae_email",
+              "value": "={{ $json.Contact?.Owner?.Email ?? $json.Owner?.Email ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-do_not_contact",
+              "name": "do_not_contact",
+              "value": "={{ ($json.Contact?.HasOptedOutOfEmail ?? $json.HasOptedOutOfEmail) ? \"TRUE\" : \"FALSE\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-notes",
+              "name": "notes",
+              "value": "={{ ($json.Contact?.Description ?? $json.Description ?? \"\").slice(0, 500) }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b707a29b-baea-4ca8-ae43-5083253dded8",
+      "name": "Map Champions",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "operation": "query",
+        "query": "={{ $('Config').first().json.soql_customer_accounts }}"
+      },
+      "id": "5ddd3045-c62f-45cf-a9e4-813dee1d4c84",
+      "name": "Query Customer Accounts",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        260,
+        400
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "resource": "search",
+        "operation": "query",
+        "query": "={{ $('Config').first().json.soql_opportunities }}"
+      },
+      "id": "cf839417-3120-41b3-ac97-b9bfa18c3194",
+      "name": "Query Opportunities",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        500,
+        400
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Salesforce connector logic. Inlined into the Salesforce connector's Code nodes.\n\n// Combines customer accounts and open / recently lost opportunities into the standard account list.\n// A domain gets the strongest relationship it has: customer > open_deal > lost_deal.\nfunction mergeSalesforceAccounts(accountRows, oppRows) {\n  const clean = (v) => String(v ?? '').trim();\n  const domainOf = (site) => {\n    let d = clean(site).toLowerCase().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0];\n    return d.includes('.') ? d : '';\n  };\n  const rank = { customer: 3, open_deal: 2, lost_deal: 1 };\n  const out = new Map();\n  const put = (row) => {\n    if (!row.domain) return;\n    const prev = out.get(row.domain);\n    if (!prev || rank[row.relationship] > rank[prev.relationship]) out.set(row.domain, row);\n  };\n  for (const a of accountRows || []) {\n    if (!a || !a.Id) continue;\n    put({\n      domain: domainOf(a.Website),\n      company_name: clean(a.Name),\n      relationship: 'customer',\n      crm_account_id: clean(a.Id),\n      owner_crm_id: clean(a.OwnerId),\n      owner_ae: clean(a.Owner && a.Owner.Name),\n      owner_ae_email: clean(a.Owner && a.Owner.Email).toLowerCase(),\n    });\n  }\n  for (const o of oppRows || []) {\n    if (!o || !o.Account) continue;\n    put({\n      domain: domainOf(o.Account.Website),\n      company_name: clean(o.Account.Name),\n      relationship: o.IsClosed === false || String(o.IsClosed) === 'false' ? 'open_deal' : 'lost_deal',\n      crm_account_id: clean(o.AccountId),\n      owner_crm_id: clean(o.OwnerId),\n      owner_ae: clean(o.Owner && o.Owner.Name),\n      owner_ae_email: clean(o.Owner && o.Owner.Email).toLowerCase(),\n    });\n  }\n  return [...out.values()];\n}\n\n// ---- n8n entry ----\nconst rows = (name) => $(name).all().map((i) => i.json).filter((j) => j && (j.Id || j.AccountId));\nreturn mergeSalesforceAccounts(rows('Query Customer Accounts'), rows('Query Opportunities')).map((json) => ({ json }));"
+      },
+      "id": "668d99e5-ea69-4227-a189-41d078b22cee",
+      "name": "Merge Accounts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bbea13ab-8b9e-4cd7-a453-5df7cb3caf1f",
+              "leftValue": "={{ !!$json.crm_account_id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "2638fbcd-ec00-4e1e-abd4-f6e994249756",
+      "name": "Has Account?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        260,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "contact",
+        "operation": "create",
+        "lastname": "={{ $json.last_name || $json.full_name || \"Unknown\" }}",
+        "additionalFields": {
+          "firstName": "={{ $json.first_name }}",
+          "email": "={{ $json.new_email }}",
+          "title": "={{ $json.new_title }}",
+          "description": "={{ $json.task_body.slice(0, 3000) }}",
+          "leadSource": "={{ $json.lead_source }}",
+          "acconuntId": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.crm_account_id }}"
+          },
+          "owner": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.owner_crm_id }}"
+          }
+        }
+      },
+      "id": "b714551e-6c1e-4553-a7dc-60af7126f0b4",
+      "name": "Create Contact",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        500,
+        600
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "lead",
+        "operation": "create",
+        "company": "={{ $json.new_company }}",
+        "lastname": "={{ $json.last_name || $json.full_name || \"Unknown\" }}",
+        "additionalFields": {
+          "firstname": "={{ $json.first_name }}",
+          "email": "={{ $json.new_email }}",
+          "title": "={{ $json.new_title }}",
+          "website": "={{ $json.new_company_domain }}",
+          "description": "={{ $json.task_body.slice(0, 3000) }}",
+          "leadSource": "={{ $json.lead_source }}",
+          "owner": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.owner_crm_id }}"
+          }
+        }
+      },
+      "id": "d29e566d-ca2d-4706-a6b8-e3605daf8778",
+      "name": "Create Lead",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        500,
+        780
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "46d0dc06-83f5-4646-a883-11273674396e",
+      "name": "Merge Records",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        740,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const req = $('Config').item.json;\nreturn { json: { ...req, crm_record_id: $json.id || '', crm_record_type: req.crm_account_id ? 'contact' : 'lead', crm_error: $json.error ? String($json.error.message || $json.error) : '' } };"
+      },
+      "id": "49d1e5b3-6771-4c1a-a69c-74a629b10978",
+      "name": "Record Id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        980,
+        680
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "task",
+        "operation": "create",
+        "status": "={{ $json.task_status }}",
+        "additionalFields": {
+          "subject": "={{ $json.task_subject.slice(0, 255) }}",
+          "description": "={{ $json.task_body }}",
+          "whoId": "={{ $json.crm_record_id }}",
+          "owner": {
+            "__rl": true,
+            "mode": "id",
+            "value": "={{ $json.owner_crm_id }}"
+          },
+          "activityDate": "={{ $now.toISODate() }}"
+        }
+      },
+      "id": "d898122d-f643-4db7-abb1-e4c602325d1a",
+      "name": "Create Task",
+      "type": "n8n-nodes-base.salesforce",
+      "typeVersion": 1,
+      "position": [
+        1220,
+        680
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const r = $('Record Id').item.json;\nconst base = String(r.instance_url || '').replace(/\\/$/, '');\nreturn { json: {\n  contact_id: r.contact_id,\n  crm_record_id: r.crm_record_id,\n  crm_record_type: r.crm_record_type,\n  crm_record_url: base && r.crm_record_id ? base + '/' + r.crm_record_id : '',\n  task_id: $json.id || '',\n  error: r.crm_error || ($json.error ? 'Task: ' + String($json.error.message || $json.error) : ''),\n} };"
+      },
+      "id": "7a47f120-42a2-4794-a8a8-8e027f1a0103",
+      "name": "Move Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1460,
+        680
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Query Champions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Query Customer Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Account?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Champions": {
+      "main": [
+        [
+          {
+            "node": "Map Champions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Customer Accounts": {
+      "main": [
+        [
+          {
+            "node": "Query Opportunities",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Query Opportunities": {
+      "main": [
+        [
+          {
+            "node": "Merge Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Account?": {
+      "main": [
+        [
+          {
+            "node": "Create Contact",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Create Lead",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Contact": {
+      "main": [
+        [
+          {
+            "node": "Merge Records",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Lead": {
+      "main": [
+        [
+          {
+            "node": "Merge Records",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge Records": {
+      "main": [
+        [
+          {
+            "node": "Record Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Record Id": {
+      "main": [
+        [
+          {
+            "node": "Create Task",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create Task": {
+      "main": [
+        [
+          {
+            "node": "Move Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

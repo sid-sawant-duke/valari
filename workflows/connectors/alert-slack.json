@@ -1,0 +1,220 @@
+{
+  "name": "Connector: Slack (alerts)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Slack (alerts and digest)\n\nPosts move, [VERIFY] and \"call now\" alerts (with @mentions from the team directory) and the digest.\n\n**Setup:**\n1. Create a Slack incoming webhook for your alerts channel and paste it into **Config**. Optional: a second webhook for the digest.\n2. Copy this workflow's ID into the core Config (Daily Run, Digest and Call Now workflows) as `alert_connector_id`.\n\n**Actions:** alert, digest.\n\nContract: docs/connectors.md in the repo.",
+        "height": 520,
+        "width": 600,
+        "color": 4
+      },
+      "id": "c7c3a12c-6d18-4692-a799-81995095b8ab",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "a2ab1dca-d7f7-40e8-a044-5e23f9db1204",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "985c5226-ba7f-4541-a4b9-aa6a139e38c1",
+              "name": "slack_webhook_url",
+              "value": "PASTE_YOUR_SLACK_INCOMING_WEBHOOK_URL",
+              "type": "string"
+            },
+            {
+              "id": "a63719b1-94fb-431f-ad43-aa658d394e83",
+              "name": "digest_webhook_url",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "d7d1e625-91ff-4676-aacf-7246cb17da55",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "8e639829-41fa-4acb-a996-8c1b76127690",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "alert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alert"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "88f99613-0fe6-4e98-a386-bf5c3978e3f4",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "digest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "digest"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "5273ee7b-b186-4a8f-a57c-7c7e63f86e52",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.slack_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text_md }) }}",
+        "options": {}
+      },
+      "id": "76e2de46-1dd6-4fe7-a979-13e4cf09a84d",
+      "name": "Post Alert",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.digest_webhook_url || $json.slack_webhook_url }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ text: $json.text_md }) }}",
+        "options": {}
+      },
+      "id": "55045038-c4c1-4af7-aa23-8e2ca52a005d",
+      "name": "Post Digest",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        260,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Post Alert",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Post Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

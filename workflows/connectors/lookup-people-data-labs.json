@@ -1,0 +1,165 @@
+{
+  "name": "Connector: People Data Labs (lookup)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: People Data Labs (lookup)\n\nLooks each person up and returns their current job and work history. The free plan includes 100 lookups a month.\n\n**Setup:**\n1. On **PDL Request**, create a Header Auth credential: name `X-Api-Key`, value your People Data Labs API key.\n2. Copy this workflow's ID into the core Config as `lookup_connector_id`.\n\n**Action:** lookup_person.\n\nContract: docs/connectors.md in the repo.",
+        "height": 520,
+        "width": 600,
+        "color": 4
+      },
+      "id": "c71d829f-abc9-4edc-a715-d92a8242bf96",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "3192043c-bcf1-48dc-aef5-5c523ef135e3",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e577a122-4115-4117-a441-b2df378003f8",
+              "name": "api_base_url",
+              "value": "https://api.peopledatalabs.com",
+              "type": "string"
+            },
+            {
+              "id": "54e8ba6f-8668-4dd7-adf8-4a1fb8e75f39",
+              "name": "min_likelihood",
+              "value": "3",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "63c33dbb-5656-48c0-a156-a5b7fb22a934",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter((i) => i.json.action === 'lookup_person');"
+      },
+      "id": "ff81228c-8909-4f7e-a76c-95d7f3ea4051",
+      "name": "Keep Lookups",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "url": "={{ $json.api_base_url + '/v5/person/enrich?pretty=false&min_likelihood=' + $json.min_likelihood + '&' + [['profile', $json.linkedin_url], ['email', $json.work_email], ['name', $json.full_name], ['company', $json.last_company]].filter(p => p[1]).map(p => p[0] + '=' + encodeURIComponent(p[1])).join('&') }}"
+      },
+      "id": "41003086-deda-418a-ab2e-4f5d79177d21",
+      "name": "PDL Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Trims a People Data Labs person/enrich response down to the fields the Investigator needs.\n// Keeps the agent prompt small (cheaper, faster) and makes \"not found\" explicit.\n// Pure function: tested in test/, inlined into the People Data Labs connector.\n\nfunction summarizeLookup(response) {\n  const r = response || {};\n  if (r.error || (r.status && Number(r.status) !== 200) || !r.data) {\n    const raw = r.error ? (r.error.message || r.error.description || JSON.stringify(r.error)) : 'No data returned';\n    // Only a real \"no match\" counts as not found. Auth or credential errors must surface as failures.\n    const notFound = /\\b404\\b|no records|not_found/i.test(String(raw)) || Number(r.status) === 404;\n    return {\n      found: false,\n      note: notFound\n        ? 'People Data Labs has no matching profile. This is not evidence that the person moved.'\n        : `Lookup failed: ${String(raw).slice(0, 200)}`,\n    };\n  }\n  const d = r.data;\n  const name = (v) => (v && typeof v === 'object' ? v.name : v) || '';\n  const experience = (Array.isArray(d.experience) ? d.experience : [])\n    .slice()\n    .sort((a, b) => String(b.start_date || '').localeCompare(String(a.start_date || '')))\n    .slice(0, 6)\n    .map((e) => ({\n      company: name(e.company),\n      company_website: (e.company && e.company.website) || '',\n      title: name(e.title),\n      start_date: e.start_date || '',\n      end_date: e.end_date || null,\n      is_primary: Boolean(e.is_primary),\n    }));\n  return {\n    found: true,\n    likelihood: r.likelihood ?? null,\n    full_name: d.full_name || '',\n    linkedin_url: d.linkedin_url || '',\n    location: d.location_name || '',\n    job_title: d.job_title || '',\n    job_company_name: d.job_company_name || '',\n    job_company_website: d.job_company_website || '',\n    job_start_date: d.job_start_date || '',\n    job_last_changed: d.job_last_changed || '',\n    job_last_verified: d.job_last_verified || '',\n    experience,\n  };\n}\n\n// ---- n8n entry ----\nreturn { json: { contact_id: $('Keep Lookups').item.json.contact_id, ...summarizeLookup($json) } };"
+      },
+      "id": "5950037c-bb7f-4b12-a00f-df25f09e0083",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Keep Lookups",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Lookups": {
+      "main": [
+        [
+          {
+            "node": "PDL Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "PDL Request": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

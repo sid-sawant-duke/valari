@@ -1,0 +1,339 @@
+{
+  "name": "Valari: Digest",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Valari: Digest\n\nEvery other Monday at 9am, sends a summary of confirmed moves, open [VERIFY] cases and the funnel (investigated → confirmed → enrolled → meetings) through your alert connector.\n\n**Setup:** paste the alert connector's workflow ID into **Config** (Slack posts to your channel, Gmail emails `digest_recipients` set in that connector), then toggle **Active**.",
+        "height": 420,
+        "width": 480,
+        "color": 4
+      },
+      "id": "659644a3-39f1-440b-aa19-bdecd80f5fdf",
+      "name": "Note: Digest",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -520,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "weeks",
+              "weeksInterval": 2,
+              "triggerAtDay": [
+                1
+              ],
+              "triggerAtHour": 9
+            }
+          ]
+        }
+      },
+      "id": "b913fdb2-21db-4690-ac2f-2ea5727b7cd5",
+      "name": "Every Other Monday",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -440,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "aef4fbae-7005-4dfa-aaf8-33beb05c2abf",
+              "name": "alert_connector_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "cac6d5db-7253-4a47-a739-c325c4a05170",
+              "name": "digest_lookback_days",
+              "value": 14,
+              "type": "number"
+            },
+            {
+              "id": "7f3c7cea-366b-453f-aa75-658bf28df859",
+              "name": "digest_title",
+              "value": "Champion moves",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9915fece-fe36-4b22-a4be-694037cf2104",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -200,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "valari_cases",
+        "columns": {
+          "column": [
+            {
+              "name": "case_id",
+              "type": "string"
+            },
+            {
+              "name": "created_at",
+              "type": "string"
+            },
+            {
+              "name": "contact_id",
+              "type": "string"
+            },
+            {
+              "name": "full_name",
+              "type": "string"
+            },
+            {
+              "name": "source",
+              "type": "string"
+            },
+            {
+              "name": "trigger",
+              "type": "string"
+            },
+            {
+              "name": "signal",
+              "type": "string"
+            },
+            {
+              "name": "outcome",
+              "type": "string"
+            },
+            {
+              "name": "confidence",
+              "type": "string"
+            },
+            {
+              "name": "old_company",
+              "type": "string"
+            },
+            {
+              "name": "new_company",
+              "type": "string"
+            },
+            {
+              "name": "new_company_domain",
+              "type": "string"
+            },
+            {
+              "name": "new_title",
+              "type": "string"
+            },
+            {
+              "name": "started_new_role",
+              "type": "string"
+            },
+            {
+              "name": "persona",
+              "type": "string"
+            },
+            {
+              "name": "icp_fit",
+              "type": "string"
+            },
+            {
+              "name": "bucket",
+              "type": "string"
+            },
+            {
+              "name": "score",
+              "type": "string"
+            },
+            {
+              "name": "priority",
+              "type": "string"
+            },
+            {
+              "name": "evidence",
+              "type": "string"
+            },
+            {
+              "name": "linkedin_url",
+              "type": "string"
+            },
+            {
+              "name": "new_email",
+              "type": "string"
+            },
+            {
+              "name": "crm_record_url",
+              "type": "string"
+            },
+            {
+              "name": "sequence_status",
+              "type": "string"
+            },
+            {
+              "name": "draft_opener",
+              "type": "string"
+            },
+            {
+              "name": "owner_ae",
+              "type": "string"
+            },
+            {
+              "name": "notified",
+              "type": "string"
+            },
+            {
+              "name": "ae_feedback",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "ea276c45-9091-4b97-a3f6-7fe2f7c061ec",
+      "name": "Ensure Cases Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        40,
+        200
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_cases"
+        },
+        "returnAll": true
+      },
+      "id": "a021dc2c-5098-4ad6-a90a-70e2d1589ab4",
+      "name": "Read Cases",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        280,
+        200
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Builds the digest (email HTML plus Slack markdown) from the cases table.\n// Pure function: tested in test/, inlined into the \"Build Digest\" Code node.\n\n\nfunction buildDigest(cfg, cases, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const days = Number(cfg.digest_lookback_days) || 14;\n  const since = new Date(now.getTime() - days * 86400000);\n  const esc = (s) => clean(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n  const fmt = (d) => d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric', timeZone: 'UTC' });\n\n  const recent = (cases || []).filter((c) => {\n    const d = new Date(clean(c.created_at));\n    return clean(c.case_id) && !isNaN(d.getTime()) && d >= since && d <= now;\n  });\n  const latest = new Map();\n  for (const c of recent) {\n    const prev = latest.get(c.contact_id);\n    if (!prev || new Date(c.created_at) > new Date(prev.created_at)) latest.set(c.contact_id, c);\n  }\n  const rows = [...latest.values()];\n  const confirmed = rows.filter((c) => c.outcome === 'confirmed').sort((a, b) => (Number(b.score) || 0) - (Number(a.score) || 0));\n  const verify = rows.filter((c) => c.outcome === 'verify');\n  const enrolled = confirmed.filter((c) => lower(c.sequence_status) === 'enrolled').length;\n  const meetings = rows.filter((c) => ['meeting_booked', 'opportunity'].includes(lower(c.ae_feedback))).length;\n\n  const bucketLabel = { customer: 'Existing customer', open_deal: 'Open deal', lost_deal: 'Lost deal', net_new: 'Net new' };\n  const th = 'style=\"text-align:left;padding:8px;border-bottom:2px solid #1f2937;font-size:13px\"';\n  const td = 'style=\"padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;vertical-align:top\"';\n  const link = (url, label) => (clean(url) ? `<a href=\"${esc(url)}\">${esc(label)}</a>` : '');\n  const title = clean(cfg.digest_title) || 'Champion moves';\n  const range = `${fmt(since)} to ${fmt(now)}`;\n  const subject = `${title}: ${confirmed.length} confirmed, ${verify.length} to verify (${range})`;\n  const funnel = `${rows.length} investigated · ${confirmed.length} confirmed · ${enrolled} enrolled in a sequence · ${meetings} meetings or opportunities logged`;\n\n  const html = `<div style=\"font-family:Arial,Helvetica,sans-serif;color:#111827;max-width:780px\">\n<h2 style=\"margin:0 0 4px\">${esc(title)}</h2>\n<p style=\"margin:0 0 16px;color:#6b7280;font-size:13px\">${range} · ${esc(funnel)}</p>\n<h3 style=\"margin:16px 0 8px\">Confirmed moves (${confirmed.length})</h3>\n${confirmed.length ? `<table style=\"border-collapse:collapse;width:100%\">\n<tr><th ${th}>Person</th><th ${th}>Move</th><th ${th}>New title</th><th ${th}>Persona</th><th ${th}>Account</th><th ${th}>Priority</th><th ${th}>Sequence</th><th ${th}>Owner</th></tr>\n${confirmed.map((c) => `<tr><td ${td}>${esc(c.full_name)}<br>${link(c.linkedin_url, 'LinkedIn')}</td><td ${td}>${esc(c.old_company)} → <b>${esc(c.new_company)}</b></td><td ${td}>${esc(c.new_title)}</td><td ${td}>${esc(c.persona)}</td><td ${td}>${esc(bucketLabel[c.bucket] || c.bucket)}</td><td ${td}>${esc(c.priority)} (${esc(c.score)})</td><td ${td}>${esc(c.sequence_status)}</td><td ${td}>${esc(c.owner_ae)}</td></tr>`).join('\\n')}\n</table>` : '<p style=\"font-size:13px;color:#6b7280\">No confirmed moves in this period.</p>'}\n<h3 style=\"margin:24px 0 8px\">Needs a manual check [VERIFY] (${verify.length})</h3>\n${verify.length ? `<ul style=\"font-size:13px;padding-left:18px\">${verify.map((c) => `<li><b>${esc(c.full_name)}</b> (${esc(c.old_company)}), owner ${esc(c.owner_ae) || 'unassigned'}. ${link(c.linkedin_url, 'Check LinkedIn')}</li>`).join('')}</ul>` : '<p style=\"font-size:13px;color:#6b7280\">Nothing waiting on a manual check.</p>'}\n<p style=\"margin-top:24px;font-size:12px;color:#6b7280\">Full history is in the valari_cases data table. Set ae_feedback there (useful, not_useful, wrong_person, contacted, meeting_booked, opportunity) so scoring can be tuned.</p>\n</div>`;\n\n  const md = [\n    `*${title}* (${range})`,\n    funnel,\n    '',\n    `*Confirmed moves (${confirmed.length})*`,\n    ...(confirmed.length ? confirmed.map((c) => `• ${c.priority} ${c.score}: *${clean(c.full_name)}* ${clean(c.old_company)} → *${clean(c.new_company)}*${c.new_title ? `, ${clean(c.new_title)}` : ''}${c.persona ? ` (${clean(c.persona)})` : ''} · ${clean(c.owner_ae) || 'unassigned'}`) : ['No confirmed moves.']),\n    '',\n    `*Needs a manual check [VERIFY] (${verify.length})*`,\n    ...(verify.length ? verify.map((c) => `• ${clean(c.full_name)} (${clean(c.old_company)}) · ${clean(c.owner_ae) || 'unassigned'}${c.linkedin_url ? ` · <${clean(c.linkedin_url)}|LinkedIn>` : ''}`) : ['Nothing waiting.']),\n  ].join('\\n');\n\n  return { action: 'digest', subject, html, text_md: md, confirmed: confirmed.length, verify: verify.length, checked: rows.length, enrolled, meetings };\n}\n\n// ---- n8n entry ----\nconst cases = $input.all().map((i) => i.json).filter((c) => c && c.case_id);\nreturn [{ json: buildDigest($('Config').first().json, cases) }];"
+      },
+      "id": "5af65776-8827-4a08-a16d-964d1198aceb",
+      "name": "Build Digest",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        520,
+        200
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.alert_connector_id }}"
+        },
+        "mode": "once",
+        "options": {}
+      },
+      "id": "57376382-6c60-476f-ac17-5b67dffab90b",
+      "name": "Send Digest",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        760,
+        200
+      ],
+      "alwaysOutputData": false
+    }
+  ],
+  "connections": {
+    "Every Other Monday": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Ensure Cases Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Cases Table": {
+      "main": [
+        [
+          {
+            "node": "Read Cases",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Cases": {
+      "main": [
+        [
+          {
+            "node": "Build Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Digest": {
+      "main": [
+        [
+          {
+            "node": "Send Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

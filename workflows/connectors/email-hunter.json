@@ -1,0 +1,159 @@
+{
+  "name": "Connector: Hunter (email finder)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Hunter (new work email)\n\nFinds the switcher's work email at their new company. Hunter's free plan includes a small monthly allowance of credits, and no credit is charged when no email is found.\n\n**Setup:**\n1. On **Hunter Request**, create a Header Auth credential: name `X-API-KEY`, value your Hunter API key.\n2. Copy this workflow's ID into the core Config as `email_finder_connector_id`.\n\n**Action:** find_email.\n\nContract: docs/connectors.md in the repo.",
+        "height": 520,
+        "width": 600,
+        "color": 4
+      },
+      "id": "99374e85-8c47-49df-a8f0-4b75d1987b8f",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "697f0ec6-2397-4b70-ab10-9877dcb074a6",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "36102612-31c6-46f4-a548-5765398b9f85",
+              "name": "api_base_url",
+              "value": "https://api.hunter.io",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "d2e9a251-d238-495c-a68e-d63d2a202017",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().filter((i) => i.json.action === 'find_email' && i.json.domain);"
+      },
+      "id": "603d17b3-2124-406b-a482-14082cabb61a",
+      "name": "Keep Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "url": "={{ $json.api_base_url + '/v2/email-finder?domain=' + encodeURIComponent($json.domain) + ($json.first_name && $json.last_name ? '&first_name=' + encodeURIComponent($json.first_name) + '&last_name=' + encodeURIComponent($json.last_name) : '&full_name=' + encodeURIComponent($json.full_name || '')) }}"
+      },
+      "id": "ace813e9-96dd-4be5-afaf-ab5cdfc7ab59",
+      "name": "Hunter Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Small mapping helpers for the Gmail, Hunter and Salesloft connectors. Inlined into their Code nodes.\n\n// Gmail (raw format) → the standard signal message.\nfunction normalizeGmail(m) {\n  const clean = (v) => String(v ?? '').trim();\n  if (!m || typeof m !== 'object' || !m.id) return null;\n  return {\n    id: clean(m.id),\n    subject: clean(m.subject || m.Subject),\n    from: clean((m.from && (m.from.text || (m.from.value && m.from.value[0] && m.from.value[0].address))) || m.From),\n    text: clean(m.text || m.snippet).slice(0, 4000),\n    date: clean(m.date),\n    headers: m.headers && typeof m.headers === 'object' ? m.headers : {},\n  };\n}\n\n// Hunter Email Finder response → the standard email result.\nfunction mapHunter(req, res) {\n  const clean = (v) => String(v ?? '').trim();\n  const d = (res && res.data) || {};\n  const email = clean(d.email);\n  const v = clean(d.verification && d.verification.status).toLowerCase();\n  const status = !email ? '' : v === 'valid' ? 'valid' : v === 'invalid' ? 'invalid' : v === 'accept_all' ? 'risky' : 'unknown';\n  return {\n    contact_id: clean(req.contact_id),\n    email,\n    confidence: email && d.score !== undefined && d.score !== null ? Number(d.score) : '',\n    status,\n    source: 'hunter',\n    error: res && res.error ? clean(res.error.message || res.error) : '',\n  };\n}\n\n// Salesloft: pick the cadence for each enroll request, or say why it's skipped.\n// cadenceIds: { \"net_new\": 123, \"lost_deal\": 456, \"open_deal\": 789, \"customer\": 101, \"default\": 999 }\nfunction planSalesloft(requests, cadenceIds, userIdsByEmail) {\n  const clean = (v) => String(v ?? '').trim();\n  const cads = cadenceIds && typeof cadenceIds === 'object' ? cadenceIds : {};\n  const users = {};\n  for (const [k, v] of Object.entries(userIdsByEmail || {})) users[k.toLowerCase()] = v;\n  return (requests || [])\n    .filter((r) => r && r.action === 'enroll')\n    .map((r) => {\n      const cadence = cads[r.cadence_key] ?? cads.default;\n      const cadenceId = cadence && typeof cadence === 'object' ? clean(cadence.id) : clean(cadence);\n      const cadenceName = cadence && typeof cadence === 'object' ? clean(cadence.name) : '';\n      return {\n        ...r,\n        cadence_id: cadenceId,\n        cadence_name: cadenceName || cadenceId,\n        user_id: clean(r.owner_sequence_user_id) || clean(users[clean(r.owner_email).toLowerCase()]),\n        skip_reason: !cadenceId ? `no cadence set for \"${r.cadence_key}\"` : !clean(r.email) ? 'no email' : '',\n      };\n    });\n}\n\n// ---- n8n entry ----\nreturn { json: mapHunter($('Keep Requests').item.json, $json) };"
+      },
+      "id": "ac946e82-3c49-4f85-a8a9-39c23dc5e18b",
+      "name": "Map Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Keep Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Keep Requests": {
+      "main": [
+        [
+          {
+            "node": "Hunter Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Hunter Request": {
+      "main": [
+        [
+          {
+            "node": "Map Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

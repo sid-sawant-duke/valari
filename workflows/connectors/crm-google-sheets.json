@@ -1,0 +1,524 @@
+{
+  "name": "Connector: Google Sheets (CRM)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Google Sheets (CRM or product-user list)\n\nThe free, no-CRM option. Also works as a **product-user list**: import this connector a second time, point it at your product-user export, and paste that copy's ID into the core Config as `product_users_connector_id`.\n\n**Setup:**\n1. Import `sheet/valari-template.xlsx` into Google Sheets and fill in the Champions and Customers tabs.\n2. Paste the sheet ID into **Config** (from the URL: /spreadsheets/d/**ID**/edit). Add a Google Sheets credential to each Sheets node.\n3. If your columns are named differently, fix the expressions in **Map Champions** and **Map Accounts**.\n4. Copy this workflow's ID into the core **Config**.\n\n**Actions:** list_champions, list_accounts, record_move (appends a row to the Moves tab).\n\nContract: docs/connectors.md in the repo.",
+        "height": 600,
+        "width": 600,
+        "color": 4
+      },
+      "id": "99b4a4e4-e9cb-48ec-af69-921a2b9677c5",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "bfc5bd8e-27e5-4417-a3f7-541d9a83b291",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2ade01ea-c777-4a97-a1a8-913d301272ba",
+              "name": "sheet_id",
+              "value": "PASTE_YOUR_GOOGLE_SHEET_ID",
+              "type": "string"
+            },
+            {
+              "id": "276873bf-1e90-4c0f-a37d-e11ac86ce09a",
+              "name": "champions_tab",
+              "value": "Champions",
+              "type": "string"
+            },
+            {
+              "id": "6dd4e6a3-ae28-48a3-a0c8-b3587ac4c983",
+              "name": "customers_tab",
+              "value": "Customers",
+              "type": "string"
+            },
+            {
+              "id": "18850542-f77d-4dbb-a01f-a18912ccba90",
+              "name": "moves_tab",
+              "value": "Moves",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "5f4b7808-1d9d-4970-a8e1-5204fc566ab8",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "6fa75a3e-d5ea-44ba-a282-eabf7ac9b104",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_champions",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_champions"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "01150c6d-1327-4961-aa6e-8d9393c8f445",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "list_accounts",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "list_accounts"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "96e9df57-a9df-4c0a-ab94-069cc4e12af9",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "record_move",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "record_move"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9bb2db0d-bf87-4b78-a814-0e99111b57aa",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.champions_tab }}"
+        },
+        "options": {}
+      },
+      "id": "2e9c5206-1855-4b44-ad14-4769fa7377df",
+      "name": "Read Champions",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        260,
+        160
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "Map Champions-contact_id",
+              "name": "contact_id",
+              "value": "={{ $json.contact_id ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-full_name",
+              "name": "full_name",
+              "value": "={{ $json.full_name ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-work_email",
+              "name": "work_email",
+              "value": "={{ $json.work_email ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-linkedin_url",
+              "name": "linkedin_url",
+              "value": "={{ $json.linkedin_url ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_company",
+              "name": "last_company",
+              "value": "={{ $json.last_company ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_company_domain",
+              "name": "last_company_domain",
+              "value": "={{ $json.last_company_domain ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-last_title",
+              "name": "last_title",
+              "value": "={{ $json.last_title ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-role_type",
+              "name": "role_type",
+              "value": "={{ $json.role_type ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-owner_ae",
+              "name": "owner_ae",
+              "value": "={{ $json.owner_ae ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-owner_ae_email",
+              "name": "owner_ae_email",
+              "value": "={{ $json.owner_ae_email ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-owner_ae_slack_id",
+              "name": "owner_ae_slack_id",
+              "value": "={{ $json.owner_ae_slack_id ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-do_not_contact",
+              "name": "do_not_contact",
+              "value": "={{ $json.do_not_contact ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Champions-notes",
+              "name": "notes",
+              "value": "={{ $json.notes ?? \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a0ff8e34-6f60-4917-aae0-7caf25a316c6",
+      "name": "Map Champions",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.customers_tab }}"
+        },
+        "options": {}
+      },
+      "id": "c6133218-2b64-4dd7-af8e-f6d3cef293a2",
+      "name": "Read Customers",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        260,
+        400
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "Map Accounts-domain",
+              "name": "domain",
+              "value": "={{ $json.domain ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Accounts-company_name",
+              "name": "company_name",
+              "value": "={{ $json.company_name ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Accounts-relationship",
+              "name": "relationship",
+              "value": "={{ $json.relationship ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Accounts-owner_ae",
+              "name": "owner_ae",
+              "value": "={{ $json.owner_ae ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Accounts-owner_ae_email",
+              "name": "owner_ae_email",
+              "value": "={{ $json.owner_ae_email ?? \"\" }}",
+              "type": "string"
+            },
+            {
+              "id": "Map Accounts-owner_ae_slack_id",
+              "name": "owner_ae_slack_id",
+              "value": "={{ $json.owner_ae_slack_id ?? \"\" }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "020852aa-065d-4232-aa93-9c642b2137a0",
+      "name": "Map Accounts",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        500,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((i) => ({ json: {\n  recorded_at: new Date().toISOString(),\n  contact_id: i.json.contact_id,\n  full_name: i.json.full_name,\n  old_company: i.json.old_company,\n  new_company: i.json.new_company,\n  new_company_domain: i.json.new_company_domain,\n  new_title: i.json.new_title,\n  new_email: i.json.new_email,\n  summary: i.json.task_body,\n} }));"
+      },
+      "id": "86960656-65d1-4c04-adde-5a023c7215f3",
+      "name": "Move Rows",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        260,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.sheet_id }}"
+        },
+        "sheetName": {
+          "__rl": true,
+          "mode": "name",
+          "value": "={{ $('Config').first().json.moves_tab }}"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "3d792a0d-9177-45a1-a2cc-4708c9021c15",
+      "name": "Append Move",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        500,
+        640
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "const rows = $('Move Rows').all();\nreturn $input.all().map((i, n) => ({ json: { contact_id: rows[n] ? rows[n].json.contact_id : '', crm_record_id: i.json.error ? '' : 'Moves tab', crm_record_type: 'sheet row', crm_record_url: '', task_id: '', error: i.json.error ? String(i.json.error.message || i.json.error) : '' } }));"
+      },
+      "id": "77a9105f-f683-406c-a367-e96bae651fe4",
+      "name": "Move Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        740,
+        640
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Read Champions",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Read Customers",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Move Rows",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Champions": {
+      "main": [
+        [
+          {
+            "node": "Map Champions",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Customers": {
+      "main": [
+        [
+          {
+            "node": "Map Accounts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Move Rows": {
+      "main": [
+        [
+          {
+            "node": "Append Move",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Append Move": {
+      "main": [
+        [
+          {
+            "node": "Move Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}
