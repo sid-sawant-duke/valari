@@ -10,8 +10,8 @@ const { buildDigest } = require('../src/core/build-digest');
 
 const NOW = '2026-10-22T12:00:00Z';
 const PERSONAS = JSON.stringify([
-  { name: 'Researcher', keywords: ['ux research', 'user research', 'research'], points: 25 },
-  { name: 'Designer', keywords: ['ux design', 'product design', 'designer'], points: 20 },
+  { name: 'Analyst', keywords: ['data analyst', 'analytics', 'analyst'], points: 25 },
+  { name: 'Ops', keywords: ['revops', 'operations', 'ops'], points: 20 },
   { name: 'Product', keywords: ['product manager', 'product'], points: 15 },
 ]);
 const cfg = {
@@ -21,12 +21,12 @@ const cfg = {
 };
 
 const crmRows = [
-  { contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', work_email: 'Jordan.Avery@northwind.example', linkedin_url: 'https://linkedin.com/in/ja', last_company: 'Northwind', last_company_domain: 'https://www.northwind.example', last_title: 'Senior UX Researcher', role_type: 'champion', owner_ae_email: 'priya@us.example', notes: 'Ran the research repository rollout.' },
+  { contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', work_email: 'Jordan.Avery@northwind.example', linkedin_url: 'https://linkedin.com/in/ja', last_company: 'Northwind', last_company_domain: 'https://www.northwind.example', last_title: 'Senior Data Analyst', role_type: 'champion', owner_ae_email: 'priya@us.example', notes: 'Ran the analytics rollout.' },
   { contact_id: '003B', full_name: 'Sam Okafor', work_email: 'sam@brightcart.example', last_company: 'Brightcart', role_type: 'Buyer', owner_crm_id: '005MARCUS' },
   { contact_id: '003C', full_name: 'Riley Chen', work_email: 'riley@harbor.example', last_company: 'Harbor', do_not_contact: true },
 ];
 const productRows = [
-  { work_email: 'sam@brightcart.example', linkedin_url: 'https://linkedin.com/in/sam', last_title: 'Product Designer' },
+  { work_email: 'sam@brightcart.example', linkedin_url: 'https://linkedin.com/in/sam', last_title: 'Operations Manager' },
   { work_email: 'ana@lumen.example', full_name: 'Ana Ruiz', last_company: 'Lumen', role_type: 'user' },
 ];
 const stateRows = [{ contact_id: 'product:ana@lumen.example', status: 'verify', next_check_on: '2026-10-01' }];
@@ -78,11 +78,11 @@ test('sweep picks one third of active people on sweep day', () => {
 });
 
 test('persona matching handles plurals and avoids false hits', () => {
-  assert.strictEqual(matchPersona(cfg, 'Lead UX Researcher').name, 'Researcher');
-  assert.strictEqual(matchPersona(cfg, 'Senior Product Designer').name, 'Designer');
+  assert.strictEqual(matchPersona(cfg, 'Lead Data Analyst').name, 'Analyst');
+  assert.strictEqual(matchPersona(cfg, 'Senior Operations Manager').name, 'Ops');
   assert.strictEqual(matchPersona(cfg, 'Production Supervisor').name, '');
   assert.strictEqual(matchPersona(cfg, 'Group Product Manager').name, 'Product');
-  assert.strictEqual(matchPersona({}, 'Head of Research').name, '');
+  assert.strictEqual(matchPersona({}, 'Head of Analytics').name, '');
 });
 
 const accounts = [
@@ -92,10 +92,10 @@ const candidates = findCandidates(cfg, watch, [bounce, autoReply], NOW).candidat
 const jordanCand = candidates.find((c) => c.contact_id === '003A');
 const samCand = candidates.find((c) => c.contact_id === '003B');
 
-test('an individual researcher moving into an open deal scores Hot through persona points', () => {
-  const d = scoreAndRoute(cfg, jordanCand, { output: { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'https://www.acme.example/about', new_title: 'Staff UX Researcher', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- PDL: Staff UX Researcher at Acme since 2026-09', draft_opener: 'Congrats on Acme!' } }, accounts, NOW);
+test('an individual analyst moving into an open deal scores Hot through persona points', () => {
+  const d = scoreAndRoute(cfg, jordanCand, { output: { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'https://www.acme.example/about', new_title: 'Staff Data Analyst', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- PDL: Staff Data Analyst at Acme since 2026-09', draft_opener: 'Congrats on Acme!' } }, accounts, NOW);
   assert.strictEqual(d.outcome, 'confirmed');
-  assert.strictEqual(d.persona, 'Researcher');
+  assert.strictEqual(d.persona, 'Analyst');
   assert.strictEqual(d.bucket, 'open_deal');
   assert.strictEqual(d.crm_account_id, '001ACME');
   // champion 25 + persona 25 + manager-level 5 + open deal 20 + ICP 15 + recency 10 = 100
@@ -108,7 +108,7 @@ test('an individual researcher moving into an open deal scores Hot through perso
 });
 
 test('custom scoring weights apply (e.g. seniority off)', () => {
-  const d = scoreAndRoute({ ...cfg, scoring: JSON.stringify({ seniority: { executive: 0, director: 0, manager: 0 }, thresholds: { hot: 90 } }) }, jordanCand, { outcome: 'confirmed', confidence: 'high', new_company: 'Zeta', new_company_domain: 'zeta.example', new_title: 'VP Research', icp_fit: 'partial' }, accounts, NOW);
+  const d = scoreAndRoute({ ...cfg, scoring: JSON.stringify({ seniority: { executive: 0, director: 0, manager: 0 }, thresholds: { hot: 90 } }) }, jordanCand, { outcome: 'confirmed', confidence: 'high', new_company: 'Zeta', new_company_domain: 'zeta.example', new_title: 'VP Analytics', icp_fit: 'partial' }, accounts, NOW);
   // champion 25 + persona 25 + seniority 0 + net new 15 + partial 8 = 73
   assert.strictEqual(d.score, 73);
   assert.strictEqual(d.priority, 'Warm');
@@ -127,7 +127,7 @@ test('guard rails: unconfirmed signals become verify, side roles and same compan
   assert.strictEqual(recheck.next_check_on, '2026-11-21');
 });
 
-const moved = scoreAndRoute(cfg, jordanCand, { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff UX Researcher', started_new_role: '2026-09', icp_fit: 'strong', evidence: '- PDL: at Acme', draft_opener: 'Congrats on Acme! Loved the research rollout.' }, accounts, NOW);
+const moved = scoreAndRoute(cfg, jordanCand, { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff Data Analyst', started_new_role: '2026-09', icp_fit: 'strong', evidence: '- PDL: at Acme', draft_opener: 'Congrats on Acme! Loved the analytics rollout.' }, accounts, NOW);
 const cool = scoreAndRoute(cfg, samCand, { outcome: 'confirmed', confidence: 'low', new_company: 'Tiny', new_company_domain: 'tiny.example', new_title: 'Associate', icp_fit: 'weak' }, accounts, NOW);
 const verify = scoreAndRoute(cfg, samCand, { outcome: 'no_change' }, accounts, NOW);
 
@@ -141,7 +141,7 @@ test('action requests: email for confirmed moves, CRM write-back, enrollment gat
   assert.strictEqual(cr[0].crm_account_id, '001ACME');
   assert.strictEqual(cr[0].owner_crm_id, '005MARCUS');
   assert.strictEqual(cr[0].new_email, 'jordan@acme.example');
-  assert.match(cr[0].task_body, /Researcher/);
+  assert.match(cr[0].task_body, /Analyst/);
   assert.deepStrictEqual(crmRequests({ ...cfg, crm_write_back: 'false' }, [moved], emails), [{ action: 'noop' }]);
   const sr = sequenceRequests(cfg, [moved, cool, verify], emails);
   assert.deepStrictEqual(sr.map((r) => r.contact_id), ['003A'], 'cool lead below min score is not enrolled');
@@ -178,7 +178,7 @@ test('finalize builds rows and alerts that reflect what the connectors did', () 
 
 test('engagement: person-level opens and account-level visits trigger "call now", with window and cooldown', () => {
   const state = [
-    { contact_id: '003A', full_name: 'Jordan Avery', status: 'moved', moved_at: '2026-10-10', new_email: 'jordan@acme.example', new_company_domain: 'acme.example', current_company: 'Acme', current_title: 'Staff UX Researcher', owner_ae: 'Marcus Lee', owner_ae_slack_id: 'U2', owner_ae_email: 'marcus@us.example' },
+    { contact_id: '003A', full_name: 'Jordan Avery', status: 'moved', moved_at: '2026-10-10', new_email: 'jordan@acme.example', new_company_domain: 'acme.example', current_company: 'Acme', current_title: 'Staff Data Analyst', owner_ae: 'Marcus Lee', owner_ae_slack_id: 'U2', owner_ae_email: 'marcus@us.example' },
     { contact_id: 'OLD', full_name: 'Old Move', status: 'moved', moved_at: '2025-01-01', new_company_domain: 'old.example' },
     { contact_id: 'COOL', full_name: 'Cooldown', status: 'moved', moved_at: '2026-10-20', new_company_domain: 'cool.example', last_engagement_alert_at: '2026-10-22T06:00:00Z' },
   ];
@@ -230,7 +230,7 @@ test('owners: account owners and unowned people are filled from the team directo
   assert.strictEqual(w[0].owner_ae, 'SDR Queue');
   assert.strictEqual(w[0].owner_ae_slack_id, 'S0');
   const cand = { ...w[0], trigger: 'signal', signal: 'bounce', signal_evidence: '' };
-  const d = scoreAndRoute(dirCfg, cand, { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Designer' }, [{ domain: 'acme.example', relationship: 'customer', owner_crm_id: '005MARCUS' }], NOW);
+  const d = scoreAndRoute(dirCfg, cand, { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Operations Manager' }, [{ domain: 'acme.example', relationship: 'customer', owner_crm_id: '005MARCUS' }], NOW);
   assert.strictEqual(d.owner.name, 'Marcus Lee');
   assert.strictEqual(d.owner.slack_id, 'U2');
   assert.strictEqual(d.owner.sequence_user_id, '42');

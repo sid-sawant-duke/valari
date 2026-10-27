@@ -18,7 +18,7 @@ const server = http.createServer((req, res) => {
     if (url.pathname === '/api/v1/people/match') {
       const b = JSON.parse(body || '{}');
       if (b.reveal_phone_number !== false) return json(400, { error: 'phone reveal must be off' });
-      if ((b.linkedin_url || '').includes('jordan')) return json(200, { person: { name: 'Jordan Avery', title: 'Staff UX Researcher', email: 'jordan.avery@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'Acme', title: 'Staff UX Researcher', start_date: '2026-09-01', current: true }] } });
+      if ((b.linkedin_url || '').includes('jordan')) return json(200, { person: { name: 'Jordan Avery', title: 'Staff Data Analyst', email: 'jordan.avery@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'Acme', title: 'Staff Data Analyst', start_date: '2026-09-01', current: true }] } });
       return json(200, { person: null });
     }
     if (url.pathname === '/v2/email-finder') return json(200, { data: url.searchParams.get('domain') === 'acme.example' ? { email: 'jordan.avery@acme.example', score: 94, verification: { status: 'valid' } } : { email: null } });
@@ -27,7 +27,7 @@ const server = http.createServer((req, res) => {
       const msgs = b.messages || [];
       const user = msgs.filter((m) => m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n');
       const verdict = /"job_company_name": "Acme"/.test(user)
-        ? { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff UX Researcher', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- People Data Labs: Staff UX Researcher at Acme since 2026-09', draft_opener: 'Congrats on joining Acme! Happy to help you get set up there.' }
+        ? { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff Data Analyst', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- People Data Labs: Staff Data Analyst at Acme since 2026-09', draft_opener: 'Congrats on joining Acme! Happy to help you get set up there.' }
         : { outcome: 'no_change', confidence: 'low', new_company: '', new_company_domain: '', new_title: '', started_new_role: '', side_role: false, icp_fit: 'unknown', evidence: '- People Data Labs has no matching profile', draft_opener: '' };
       const done = msgs.some((m) => m.role === 'tool');
       const call = done ? { name: 'format_final_json_response', args: { output: verdict } } : { name: 'thinking_tool', args: { thought: 'Checking.' } };
@@ -64,7 +64,7 @@ async function tableRows(name) {
   const set = (k, v) => { cfg.find((a) => a.name === k).value = v; };
   set('google_sheet_id', 'TEST');
   set('find_new_emails', 'true');
-  set('personas', JSON.stringify([{ name: 'Researcher', keywords: ['research'], points: 25 }]));
+  set('personas', JSON.stringify([{ name: 'Analyst', keywords: ['analyst'], points: 25 }]));
   set('team_directory', JSON.stringify({ 'priya@us.example': { name: 'Priya Shah', slack_id: 'U1' } }));
   wf.nodes.find((n) => n.name === 'Test Contact').parameters.assignments.assignments.find((a) => a.name === 'contact_id').value = '003B';
   for (const n of wf.nodes) if (n.type === 'n8n-nodes-base.httpRequest') n.credentials = { httpHeaderAuth: { id: headerCred.id, name: headerCred.name } };
@@ -73,7 +73,7 @@ async function tableRows(name) {
 
   const pins = {
     'Read Champions': J([
-      { row_number: 2, contact_id: '003A', full_name: 'Jordan Avery', work_email: 'jordan.avery@northwind.example', linkedin_url: 'https://www.linkedin.com/in/example-jordan', last_company: 'Northwind', last_company_domain: 'northwind.example', last_title: 'Senior UX Researcher', role_type: 'champion', owner_ae_email: 'priya@us.example', do_not_contact: 'FALSE', notes: 'Ran the research rollout.' },
+      { row_number: 2, contact_id: '003A', full_name: 'Jordan Avery', work_email: 'jordan.avery@northwind.example', linkedin_url: 'https://www.linkedin.com/in/example-jordan', last_company: 'Northwind', last_company_domain: 'northwind.example', last_title: 'Senior Data Analyst', role_type: 'champion', owner_ae_email: 'priya@us.example', do_not_contact: 'FALSE', notes: 'Ran the analytics rollout.' },
       { row_number: 3, contact_id: '003B', full_name: 'Sam Okafor', work_email: 'sam@brightcart.example', last_company: 'Brightcart', role_type: 'buyer', owner_ae_email: 'priya@us.example', do_not_contact: 'FALSE' },
     ]),
     'Read Customers': J([{ row_number: 2, domain: 'acme.example', company_name: 'Acme', relationship: 'open_deal', owner_ae: 'Marcus Lee', owner_ae_slack_id: 'U2' }]),
@@ -99,7 +99,7 @@ async function tableRows(name) {
   assert.ok(!hits.some((h) => h.path === '/v2/email-finder' && h.query.domain === 'acme.example'), 'Hunter not called when Apollo has the email');
   const usage = await tableRows('valari_usage');
   assert.strictEqual(usage.find((u) => u.provider === 'apollo').credits_used, '1', 'one credit: only the match is charged');
-  assert.match(alerts[0].text_md, /Researcher persona/);
+  assert.match(alerts[0].text_md, /Analyst persona/);
   assert.ok(!/Sequence|CRM:|Salesforce/.test(alerts[0].text_md), 'only steps that are on');
   assert.match(alerts[1].text_md, /\[VERIFY\] Sam Okafor/);
   const cases = await tableRows('valari_cases');

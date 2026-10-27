@@ -5,9 +5,9 @@ const { mergeSalesforceAccounts } = require('../src/connectors/salesforce');
 const { normalizeGmail, mapHunter, planSalesloft } = require('../src/connectors/misc');
 
 test('PDL summary trims the response and sorts experience newest first', () => {
-  const s = summarizeLookup({ status: 200, likelihood: 8, data: { full_name: 'jordan avery', job_title: 'staff ux researcher', job_company_name: 'acme', job_company_website: 'acme.example', job_start_date: '2026-09', emails: true, experience: [
-    { company: { name: 'northwind' }, title: { name: 'senior ux researcher' }, start_date: '2021-03', end_date: '2026-08' },
-    { company: { name: 'acme', website: 'acme.example' }, title: { name: 'staff ux researcher' }, start_date: '2026-09', end_date: null, is_primary: true },
+  const s = summarizeLookup({ status: 200, likelihood: 8, data: { full_name: 'jordan avery', job_title: 'staff data analyst', job_company_name: 'acme', job_company_website: 'acme.example', job_start_date: '2026-09', emails: true, experience: [
+    { company: { name: 'northwind' }, title: { name: 'senior data analyst' }, start_date: '2021-03', end_date: '2026-08' },
+    { company: { name: 'acme', website: 'acme.example' }, title: { name: 'staff data analyst' }, start_date: '2026-09', end_date: null, is_primary: true },
   ] } });
   assert.strictEqual(s.found, true);
   assert.strictEqual(s.experience[0].company, 'acme');

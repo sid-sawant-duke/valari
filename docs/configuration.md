@@ -50,14 +50,14 @@ Usage is tracked per month in the `valari_usage` data table, and results in `val
 
 ### Personas
 
-Persona points reward the kinds of people who matter most to you, whatever their seniority. Keywords are matched against the new job title (or the old one if the new one is unknown). Plurals and "-er" forms match too ("research" matches "Researcher"), but "product" does not match "Production".
+Persona points reward the kinds of people who matter most to you, whatever their seniority. Keywords are matched against the new job title (or the old one if the new one is unknown). Plurals and "-er" and "-ing" forms match too ("analyst" matches "Analysts", "market" matches "Marketing"), but "product" does not match "Production".
 
-Example for a research tool:
+Example for an analytics tool:
 
 ```json
 [
-  { "name": "Researcher", "keywords": ["ux research", "user research", "research"], "points": 25 },
-  { "name": "Designer",   "keywords": ["ux design", "product design", "designer"], "points": 20 },
+  { "name": "Analyst", "keywords": ["data analyst", "analytics", "analyst"], "points": 25 },
+  { "name": "Ops",     "keywords": ["revops", "operations", "ops"], "points": 20 },
   { "name": "Product",    "keywords": ["product manager", "product"], "points": 15 }
 ]
 ```
