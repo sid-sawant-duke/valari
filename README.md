@@ -6,7 +6,7 @@ Valari is a free, open source alternative to paid job-change tools, built as n8n
 
 Plug in your own tools. Bring any AI model.
 
-> **Example:** Jordan ran your analytics rollout at Northwind. Her Northwind email bounces. Valari confirms she's now a Staff Data Analyst at Acme, where you have an open deal. It finds her new email, creates the contact and a task in Salesforce, adds her to your "job switchers: open deal" cadence, and pings Acme's account owner (cc'ing Jordan's old AE) with the evidence and a draft opener. Two days later she opens the email and the rep gets "Call now."
+> **Example:** Jordan ran your research rollout at Northwind. Her Northwind email bounces. Valari confirms she's now a Staff UX Researcher at Acme, where you have an open deal. It finds her new email, creates the contact and a task in Salesforce, adds her to your "job switchers: open deal" cadence, and pings Acme's account owner (cc'ing Jordan's old AE) with the evidence and a draft opener. Two days later she opens the email and the rep gets "Call now."
 
 ---
 
@@ -122,12 +122,12 @@ Guardrails so a run can't drain an account:
 
 ## Persona scoring
 
-Seniority isn't always what matters. If your best users are data analysts, an analyst moving to a new company is worth more to you than a VP who never logged in. Tell Valari who matters:
+Seniority isn't always what matters. If your best users are UX researchers, a researcher moving to a new company is worth more to you than a VP who never logged in. Tell Valari who matters:
 
 ```json
 [
-  { "name": "Analyst", "keywords": ["data analyst", "analytics", "analyst"], "points": 25 },
-  { "name": "Ops",     "keywords": ["revops", "operations", "ops"], "points": 20 }
+  { "name": "Researcher", "keywords": ["ux research", "user research", "research"], "points": 25 },
+  { "name": "Designer",   "keywords": ["ux design", "product design", "designer"], "points": 20 }
 ]
 ```
 

@@ -75,9 +75,9 @@ champ_cols = ["contact_id", "full_name", "work_email", "linkedin_url", "last_com
               "role_type", "owner_ae", "owner_ae_email", "owner_ae_slack_id", "do_not_contact", "notes"]
 examples = [
     ("EX-1", "Jordan Avery", "jordan.avery@northwind.example", "https://www.linkedin.com/in/example-jordan-avery", "Northwind Logistics",
-     "northwind.example", "Senior Data Analyst", "champion", "Priya Shah", "priya@yourcompany.example", "U0000000001",
-     "Example row. Ran the analytics rollout to 3 teams."),
-    ("EX-2", "Sam Okafor", "sam.okafor@brightcart.example", "", "Brightcart", "brightcart.example", "Director of Operations",
+     "northwind.example", "Senior UX Researcher", "champion", "Priya Shah", "priya@yourcompany.example", "U0000000001",
+     "Example row. Ran the research repository rollout to 3 teams."),
+    ("EX-2", "Sam Okafor", "sam.okafor@brightcart.example", "", "Brightcart", "brightcart.example", "Director of Design",
      "buyer", "Marcus Lee", "marcus@yourcompany.example", "U0000000002", "Example row. Signed the 2025 renewal."),
 ]
 champ_rows = [dict(zip(champ_cols[:11] + ["notes"], e), do_not_contact="TRUE") for e in examples]

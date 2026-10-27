@@ -24,11 +24,11 @@ function scoringConfig(cfg) {
 }
 
 // Personas are matched against the new title (or the old one if the new title is unknown).
-// cfg.personas: [{ "name": "Analyst", "keywords": ["analyst"], "points": 25 }, ...]
+// cfg.personas: [{ "name": "Researcher", "keywords": ["research"], "points": 25 }, ...]
 function matchPersona(cfg, title) {
   const personas = parseJson(cfg.personas, []) || [];
   const t = ` ${lower(title).replace(/[^a-z0-9]+/g, ' ')} `;
-  // "analyst" also matches "analysts", "market" matches "marketing", but "product" does not match "production".
+  // "research" also matches "researcher" and "researchers", but "product" does not match "production".
   const hit = (w) => new RegExp(` ${w.replace(/ /g, ' ')}(s|er|ers|ing)? `).test(t);
   let best = null;
   for (const p of Array.isArray(personas) ? personas : []) {
