@@ -1,6 +1,6 @@
 {
   "name": "valari",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Open source n8n workflows that catch when your product's past users change jobs, confirm the move with an AI agent, and act on it: new email, CRM record, sequence, and a 'call now' alert.",
   "license": "MIT",
   "private": true,

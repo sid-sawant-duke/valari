@@ -121,5 +121,5 @@ If a tool can't send custom headers, put it behind a small relay or switch the w
 ## 9. Optional: MCP
 
 1. In the MCP Server workflow, open **investigate_contact** and pick the **Valari: Daily Run** workflow. If `contact_id` shows up blank, click the AI sparkle next to it.
-2. Add a Bearer Auth credential on the trigger and activate it.
+2. Add a Bearer Auth credential on the trigger and publish it.
 3. Add the Production URL to Claude, ChatGPT, Cursor or another MCP client as a remote MCP server.
