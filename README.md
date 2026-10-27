@@ -15,7 +15,7 @@ Plug in your own tools. Bring any AI model.
 | | **n8n template** (one workflow) | **Full version** (core + connectors) |
 |---|---|---|
 | Best for | Trying it in 15 minutes | Running it with your real stack |
-| Tools | Google Sheets, Gmail, People Data Labs, Slack, optional Hunter | Any CRM, sequencing and alert tool through connectors (Salesforce, Salesloft and more today) |
+| Tools | Google Sheets, Gmail, Apollo, Slack, optional Hunter | Any CRM, lookup, sequencing and alert tool through connectors (Salesforce, Apollo, Clay, Salesloft and more today) |
 | CRM write-back and sequences | No | Yes |
 | File | [`templates/valari-template.json`](templates/valari-template.json) | [`workflows/`](workflows/) |
 
@@ -33,7 +33,8 @@ Both share the same tested logic, prompts and data tables, so you can start with
  CRM watchlist + accounts  ──┐
  Product-user list         ──┤   1. DETECT       bounces, "I've left" replies, rechecks,
  Inbox signals             ──┘                   and a monthly sweep (1/3 of the list)
-                                 2. LOOK UP      current job and history             ◀── Lookup
+                                 2. LOOK UP      current job, tool by tool,          ◀── Lookup waterfall
+                                                 within monthly credit budgets           (Apollo → Clay → PDL)
                                  3. INVESTIGATE  AI agent: confirmed / verify / no_change
                                                  + evidence + draft opener
                                  4. SCORE        role, persona, seniority, account,
@@ -64,7 +65,7 @@ Both share the same tested logic, prompts and data tables, so you can start with
 |---|---|---|
 | CRM / watchlist | **Salesforce**, **Google Sheets** (also works as a product-user list) | HubSpot, Pipedrive, Attio, Close |
 | Signals | **Gmail** | Outlook / Microsoft 365, IMAP |
-| Lookup | **People Data Labs** | Apollo, Crustdata |
+| Lookup (waterfall of up to 3) | **Apollo**, **Clay**, **People Data Labs** | ZoomInfo, Crustdata, free web search (SearXNG) |
 | New email | **Hunter** | Apollo, Prospeo |
 | Sequence | **Salesloft** | Outreach, Apollo, HubSpot sequences |
 | Alerts | **Slack**, **Gmail** | Microsoft Teams, Discord |
@@ -78,7 +79,7 @@ Writing a connector means building one small workflow that follows the [connecto
 
 | Path | What it is |
 |---|---|
-| `workflows/core/` | **Daily Run**, **Digest**, **Call Now Webhook**, **MCP Server** |
+| `workflows/core/` | **Daily Run**, **Digest**, **Call Now Webhook**, **MCP Server**, **Lookup Callback** |
 | `workflows/connectors/` | One workflow per tool |
 | `templates/` | The single-workflow n8n template and its submission text |
 | `sheet/` | Template for the Google Sheets connector |
@@ -93,15 +94,31 @@ Writing a connector means building one small workflow that follows the [connecto
 
 You need n8n 2.44 or later (self-hosted Community Edition is free), an AI model key, and accounts for the tools you plug in.
 
-1. **Import** the four core workflows and the connectors you need (n8n: **Workflows > Import from File**).
+1. **Import** the core workflows and the connectors you need (n8n: **Workflows > Import from File**).
 2. **Set up each connector**: add credentials and fill in its **Config**. Each one has a setup note on its canvas.
-3. **Wire them up**: paste each connector's workflow ID into the **Config** node of the core workflows.
+3. **Wire them up**: paste each connector's workflow ID into the **Config** node of the core workflows, then **publish** each connector. n8n only lets scheduled and webhook-started runs call published workflows.
 4. **Describe your business** in the Daily Run **Config**: product, ICP, personas, team directory.
-5. **Test** with **Execute workflow**, then switch on **Daily Run**, **Digest** and **Call Now Webhook**.
+5. **Test** with **Execute workflow**, then publish **Daily Run**, **Digest**, **Call Now Webhook** and (if you use Clay) **Lookup Callback**.
 
 The full walkthrough, using Salesforce, Salesloft, Gmail and Slack as the example stack, is in **[docs/setup.md](docs/setup.md)**.
 
 ---
+
+## Lookup waterfall and credit guardrails
+
+Valari tries up to three lookup tools in the order you choose and stops as soon as one finds the person's current job. A common setup:
+
+1. **Apollo**, which most GTM teams already pay for. It only charges when it finds someone, and Valari never asks it for phone numbers.
+2. **Clay**, only for people Apollo couldn't find. Clay runs its own waterfall across many data providers and sends the answer back to Valari's **Lookup Callback** a few minutes later.
+3. **People Data Labs** as a cheap final fallback.
+
+Guardrails so a run can't drain an account:
+
+- **Monthly budget per tool.** A tool pauses when it hits its budget, and Valari moves on to the next one.
+- **Slack warning at 80%** of any budget.
+- **No paying twice.** Recent results are reused (14 days by default), and a tool that found nothing isn't asked about the same person again for 30 days.
+- **A cap per run**, so one big sweep stays small.
+- **Every result names its source**, so you can see what each credit bought.
 
 ## Persona scoring
 
@@ -128,7 +145,7 @@ The **MCP Server** workflow exposes `list_cases`, `list_tracked` and `investigat
 
 - **n8n:** free if self-hosted.
 - **AI model:** one short call per person investigated. A small model (Claude Haiku, GPT mini models) keeps it cheap, and a local Ollama model is free.
-- **People Data Labs:** the free plan has 100 lookups a month. Bounces trigger lookups only for people who probably moved, and the sweep checks a third of the list each month.
+- **Lookups:** you set a monthly credit budget per tool. Apollo is usually already paid for and only charges when it finds someone. Clay is asked only when Apollo finds nothing. Recent results are reused instead of paying twice. People Data Labs' free plan (100 a month) works as a cheap fallback.
 - **Hunter, Salesloft, Salesforce, Slack:** whatever plan you already have.
 
 ---

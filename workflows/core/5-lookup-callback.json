@@ -1,0 +1,334 @@
+{
+  "name": "Valari: Lookup Callback",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Valari: Lookup Callback\n\nSome lookup tools answer later instead of right away. **Clay** works this way: Valari sends a person to a Clay table, Clay runs its waterfall, and an HTTP API column posts the result here.\n\nThis workflow saves the result to the lookup cache and immediately re-runs the Daily Run for that person, which picks up the cached answer without spending another credit.\n\n**Setup:**\n1. Add a Header Auth credential on the **Webhook** and use the same header in Clay's HTTP API column.\n2. In **Config**, paste the Daily Run's workflow ID.\n3. Activate, and put the Production URL in the Clay connector's `callback_url`.\n\nSend at least `valari_contact_id` plus the current `company_name`, `company_domain`, `job_title` and (optionally) `job_start_date`, `linkedin_url`, `work_email`.",
+        "height": 560,
+        "width": 600,
+        "color": 4
+      },
+      "id": "130c6adf-0725-4429-afc3-1ed023dee3a9",
+      "name": "Note: Callback",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "valari-lookup-callback",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "e2199140-5ad3-44f1-a852-0a4452aa6831",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        300
+      ],
+      "webhookId": "599cc3ee-7403-43b3-ab43-bb1bd2b30880"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a02513ee-b36f-47b2-a136-400b0272d49c",
+              "name": "daily_run_workflow_id",
+              "value": "",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "04d6f5f1-980d-45c1-a1b2-8a2392eaa7db",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "valari_lookups",
+        "columns": {
+          "column": [
+            {
+              "name": "contact_id",
+              "type": "string"
+            },
+            {
+              "name": "provider",
+              "type": "string"
+            },
+            {
+              "name": "found",
+              "type": "string"
+            },
+            {
+              "name": "pending",
+              "type": "string"
+            },
+            {
+              "name": "summary_json",
+              "type": "string"
+            },
+            {
+              "name": "looked_up_at",
+              "type": "string"
+            },
+            {
+              "name": "tried_json",
+              "type": "string"
+            },
+            {
+              "name": "signal_json",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "31c84f76-a069-485a-ad9f-d952ecaf434e",
+      "name": "Ensure Lookups Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        300
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_lookups"
+        },
+        "returnAll": true
+      },
+      "id": "546bb710-527b-4176-ac8f-b552cecad361",
+      "name": "Read Lookup Cache",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        300
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// Lookup callback: turns a result sent back later by an async lookup tool (Clay) into a cache row,\n// so the next investigation of that person uses it instead of spending another credit.\n// Pure function: tested in test/, inlined into the Lookup Callback workflow.\n\n\nfunction normalizeCallback(body, existingRows, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const b = body && typeof body === 'object' ? (body.body && typeof body.body === 'object' ? body.body : body) : {};\n  const pick = (...keys) => {\n    for (const k of keys) {\n      const v = k.split('.').reduce((o, part) => (o && typeof o === 'object' ? o[part] : undefined), b);\n      if (v !== undefined && v !== null && typeof v !== 'object' && clean(v) !== '') return clean(v);\n    }\n    return '';\n  };\n  const contactId = pick('valari_contact_id', 'contact_id', 'contactId');\n  if (!contactId) return null;\n  const provider = lower(pick('provider', 'source')) || 'clay';\n  const company = pick('company_name', 'job_company_name', 'company', 'organization_name', 'current_company');\n  const title = pick('job_title', 'title', 'current_title');\n  const summary = {\n    found: !!(company || title),\n    provider,\n    full_name: pick('full_name', 'name'),\n    linkedin_url: pick('linkedin_url', 'linkedin'),\n    location: pick('location'),\n    job_title: title,\n    job_company_name: company,\n    job_company_website: normDomain(pick('company_domain', 'job_company_website', 'domain', 'company_website', 'website')),\n    job_start_date: pick('job_start_date', 'start_date', 'started_at'),\n    job_last_changed: '',\n    job_last_verified: pick('job_last_verified', 'verified_at'),\n    experience: [],\n    email: lower(pick('work_email', 'email', 'new_email')),\n    email_status: lower(pick('email_status')),\n  };\n  if (!summary.found) summary.note = `${provider} found no current job for this person. This is not evidence that they moved.`;\n  const existing = (existingRows || []).find((r) => clean(r.contact_id) === contactId) || {};\n  const tried = parseJson(existing.tried_json, {}) || {};\n  tried[provider] = now.toISOString();\n  return {\n    contact_id: contactId,\n    provider,\n    found: summary.found ? 'TRUE' : 'FALSE',\n    pending: 'FALSE',\n    summary_json: JSON.stringify(summary),\n    looked_up_at: now.toISOString(),\n    tried_json: JSON.stringify(tried),\n    signal_json: clean(existing.signal_json),\n  };\n}\n\n// ---- n8n entry ----\nconst existing = $input.all().map((i) => i.json).filter((r) => r && r.contact_id);\nconst row = normalizeCallback($('Webhook').first().json, existing);\nif (!row) { console.log('Callback without valari_contact_id, ignored'); return []; }\nreturn [{ json: row }];"
+      },
+      "id": "5d8c166b-921d-4a4c-aa81-829c15d5ea84",
+      "name": "Normalize Result",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_lookups"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "64737879-9fd1-4f5a-aa32-24a55fdcf3e2",
+      "name": "Save Lookup Result",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        720,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return [{ json: { contact_id: $('Normalize Result').first().json.contact_id } }];"
+      },
+      "id": "2540fc54-56fc-48a8-a783-6de43a0a7da0",
+      "name": "Contact To Investigate",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        960,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.daily_run_workflow_id }}"
+        },
+        "workflowInputs": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "contact_id": "={{ $json.contact_id }}"
+          },
+          "matchingColumns": [],
+          "schema": [
+            {
+              "id": "contact_id",
+              "displayName": "contact_id",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "canBeUsedToMatch": true,
+              "type": "string",
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": true
+        },
+        "mode": "each",
+        "options": {
+          "waitForSubWorkflow": false
+        }
+      },
+      "id": "84d921f8-59af-4ebb-a688-ab5ec1997d39",
+      "name": "Investigate Now",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        1200,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Ensure Lookups Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure Lookups Table": {
+      "main": [
+        [
+          {
+            "node": "Read Lookup Cache",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read Lookup Cache": {
+      "main": [
+        [
+          {
+            "node": "Normalize Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Normalize Result": {
+      "main": [
+        [
+          {
+            "node": "Save Lookup Result",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Lookup Result": {
+      "main": [
+        [
+          {
+            "node": "Contact To Investigate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Contact To Investigate": {
+      "main": [
+        [
+          {
+            "node": "Investigate Now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

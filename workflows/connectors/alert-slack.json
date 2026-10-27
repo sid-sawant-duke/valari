@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Connector: Slack (alerts and digest)\n\nPosts move, [VERIFY] and \"call now\" alerts (with @mentions from the team directory) and the digest.\n\n**Setup:**\n1. Create a Slack incoming webhook for your alerts channel and paste it into **Config**. Optional: a second webhook for the digest.\n2. Copy this workflow's ID into the core Config (Daily Run, Digest and Call Now workflows) as `alert_connector_id`.\n\n**Actions:** alert, digest.\n\nContract: docs/connectors.md in the repo.",
-        "height": 520,
+        "content": "## Connector: Slack (alerts and digest)\n\nPosts move, [VERIFY] and \"call now\" alerts (with @mentions from the team directory) and the digest.\n\n**Setup:**\n1. Create a Slack incoming webhook for your alerts channel and paste it into **Config**. Optional: a second webhook for the digest.\n2. Copy this workflow's ID into the core Config (Daily Run, Digest and Call Now workflows) as `alert_connector_id`.\n\n**Actions:** alert, digest.\n\n**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.\n\nContract: docs/connectors.md in the repo.",
+        "height": 580,
         "width": 600,
         "color": 4
       },

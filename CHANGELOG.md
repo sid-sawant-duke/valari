@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+- **Lookup waterfall**: up to three lookup tools in order; each person goes to the next tool only if the earlier ones couldn't find them.
+- **Apollo connector** (new default lookup): only charges on a match, never requests phone numbers, and its new work email skips the email finder.
+- **Clay connector** plus a **Lookup Callback** workflow, since Clay answers later.
+- **Credit guardrails**: monthly budget per tool, a warning at 80%, results reused for 14 days, no repeat asks for 30 days after a miss, and the source of every answer recorded.
+- The n8n template now uses Apollo instead of People Data Labs. People Data Labs stays as an optional connector.
+- When Clay answers, the re-run keeps the bounce or auto-reply that started it, so "nothing found" still ends as [VERIFY].
+- Setup docs and connector notes now say to **publish** every connector: n8n 2.x only lets scheduled and webhook-started runs call published workflows.
+
 ## 0.2.0
 
 **Plug in your own tools.** The core no longer talks to any vendor directly. It calls connectors, one small workflow per tool, picked by ID in Config.

@@ -15,16 +15,18 @@ const server = http.createServer((req, res) => {
     const url = new URL(req.url, MOCK);
     const json = (code, obj) => { res.writeHead(code, { 'content-type': 'application/json' }); res.end(JSON.stringify(obj)); };
     hits.push({ method: req.method, path: url.pathname, query: Object.fromEntries(url.searchParams) });
-    if (url.pathname === '/v5/person/enrich') {
-      if ((url.searchParams.get('profile') || '').includes('jordan')) return json(200, { status: 200, likelihood: 9, data: { full_name: 'jordan avery', job_title: 'staff ux researcher', job_company_name: 'acme', job_company_website: 'acme.example', job_start_date: '2026-09', experience: [] } });
-      return json(404, { status: 404, error: { type: 'not_found', message: 'No records were found' } });
+    if (url.pathname === '/api/v1/people/match') {
+      const b = JSON.parse(body || '{}');
+      if (b.reveal_phone_number !== false) return json(400, { error: 'phone reveal must be off' });
+      if ((b.linkedin_url || '').includes('jordan')) return json(200, { person: { name: 'Jordan Avery', title: 'Staff UX Researcher', email: 'jordan.avery@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'Acme', title: 'Staff UX Researcher', start_date: '2026-09-01', current: true }] } });
+      return json(200, { person: null });
     }
     if (url.pathname === '/v2/email-finder') return json(200, { data: url.searchParams.get('domain') === 'acme.example' ? { email: 'jordan.avery@acme.example', score: 94, verification: { status: 'valid' } } : { email: null } });
     if (url.pathname === '/v1/chat/completions') {
       const b = JSON.parse(body || '{}');
       const msgs = b.messages || [];
       const user = msgs.filter((m) => m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n');
-      const verdict = /"job_company_name": "acme"/.test(user)
+      const verdict = /"job_company_name": "Acme"/.test(user)
         ? { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff UX Researcher', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- People Data Labs: Staff UX Researcher at Acme since 2026-09', draft_opener: 'Congrats on joining Acme! Happy to help you get set up there.' }
         : { outcome: 'no_change', confidence: 'low', new_company: '', new_company_domain: '', new_title: '', started_new_role: '', side_role: false, icp_fit: 'unknown', evidence: '- People Data Labs has no matching profile', draft_opener: '' };
       const done = msgs.some((m) => m.role === 'tool');
@@ -56,7 +58,7 @@ async function tableRows(name) {
   const headerCred = await api('POST', '/rest/credentials', { name: 'Mock header (template)', type: 'httpHeaderAuth', data: { name: 'X-Api-Key', value: 'test' } });
 
   const raw = fs.readFileSync(path.join(__dirname, '..', '..', 'templates', 'valari-template.json'), 'utf8')
-    .replace(/https:\/\/api\.peopledatalabs\.com/g, MOCK).replace(/https:\/\/api\.hunter\.io/g, MOCK);
+    .replace(/https:\/\/api\.apollo\.io/g, MOCK).replace(/https:\/\/api\.hunter\.io/g, MOCK);
   const wf = JSON.parse(raw);
   const cfg = wf.nodes.find((n) => n.name === 'Config').parameters.assignments.assignments;
   const set = (k, v) => { cfg.find((a) => a.name === k).value = v; };
@@ -93,7 +95,10 @@ async function tableRows(name) {
   alerts.forEach((a) => console.log('  ---\n  ' + a.text_md.split('\n').join('\n  ')));
   assert.strictEqual(alerts.length, 2);
   assert.match(alerts[0].text_md, /<@U2> this one is yours \(cc <@U1>/);
-  assert.match(alerts[0].text_md, /\*New email:\* jordan.avery@acme.example \(valid, 94%\)/);
+  assert.match(alerts[0].text_md, /\*New email:\* jordan.avery@acme.example \(valid\)/, 'email from Apollo, Hunter skipped');
+  assert.ok(!hits.some((h) => h.path === '/v2/email-finder' && h.query.domain === 'acme.example'), 'Hunter not called when Apollo has the email');
+  const usage = await tableRows('valari_usage');
+  assert.strictEqual(usage.find((u) => u.provider === 'apollo').credits_used, '1', 'one credit: only the match is charged');
   assert.match(alerts[0].text_md, /Researcher persona/);
   assert.ok(!/Sequence|CRM:|Salesforce/.test(alerts[0].text_md), 'only steps that are on');
   assert.match(alerts[1].text_md, /\[VERIFY\] Sam Okafor/);

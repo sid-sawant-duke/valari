@@ -3,8 +3,8 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Connector: Salesloft (sequence)\n\nAdds each confirmed switcher to the right cadence, with the draft opener saved as a note on the person.\n\n**Setup:**\n1. Create a Header Auth credential: name `Authorization`, value `Bearer YOUR_SALESLOFT_API_KEY`, and select it on every HTTP node.\n2. In **Config**, map each account bucket to a cadence ID: `net_new`, `lost_deal`, `open_deal`, `customer` (and an optional `default`). Buckets without a cadence are skipped.\n3. **Make the first step of each cadence a manual email** so the rep reviews it before anything is sent.\n4. Optional: `user_ids_by_email` maps rep emails to Salesloft user IDs so people land in the right rep's cadence. Otherwise the API key's user is used (use team cadences).\n5. Copy this workflow's ID into the core Config as `sequence_connector_id`.\n\n**Action:** enroll.\n\nContract: docs/connectors.md in the repo.",
-        "height": 720,
+        "content": "## Connector: Salesloft (sequence)\n\nAdds each confirmed switcher to the right cadence, with the draft opener saved as a note on the person.\n\n**Setup:**\n1. Create a Header Auth credential: name `Authorization`, value `Bearer YOUR_SALESLOFT_API_KEY`, and select it on every HTTP node.\n2. In **Config**, map each account bucket to a cadence ID: `net_new`, `lost_deal`, `open_deal`, `customer` (and an optional `default`). Buckets without a cadence are skipped.\n3. **Make the first step of each cadence a manual email** so the rep reviews it before anything is sent.\n4. Optional: `user_ids_by_email` maps rep emails to Salesloft user IDs so people land in the right rep's cadence. Otherwise the API key's user is used (use team cadences).\n5. Copy this workflow's ID into the core Config as `sequence_connector_id`.\n\n**Action:** enroll.\n\n**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.\n\nContract: docs/connectors.md in the repo.",
+        "height": 780,
         "width": 600,
         "color": 4
       },

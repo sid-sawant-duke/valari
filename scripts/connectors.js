@@ -3,7 +3,8 @@
 const { inline, makeBuilder } = require('./lib');
 
 const CONTRACT = 'Contract: docs/connectors.md in the repo.';
-const note = (b, title, body, height = 520) => b.sticky('Note: Setup', [-560, -360], 600, height, `## ${title}\n\n${body}\n\n${CONTRACT}`, 4);
+const PUBLISH = '**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.';
+const note = (b, title, body, height = 520) => b.sticky('Note: Setup', [-560, -360], 600, height + 60, `## ${title}\n\n${body}\n\n${PUBLISH}\n\n${CONTRACT}`, 4);
 const set = (b, name, pos, fields) =>
   b.add(name, 'n8n-nodes-base.set', 3.4, pos, {
     assignments: { assignments: Object.entries(fields).map(([k, v]) => ({ id: `${name}-${k}`, name: k, value: v, type: 'string' })) },
@@ -163,7 +164,7 @@ return $input.all().map((i) => normalizeGmail(i.json)).filter(Boolean).map((json
 // ------------------------------------------------------------------ Lookup: People Data Labs
 function lookupPdl() {
   const b = makeBuilder('conn/lookup-pdl');
-  note(b, 'Connector: People Data Labs (lookup)', `Looks each person up and returns their current job and work history. The free plan includes 100 lookups a month.\n\n**Setup:**\n1. On **PDL Request**, create a Header Auth credential: name \`X-Api-Key\`, value your People Data Labs API key.\n2. Copy this workflow's ID into the core Config as \`lookup_connector_id\`.\n\n**Action:** lookup_person.`);
+  note(b, 'Connector: People Data Labs (lookup)', `Looks each person up and returns their current job and work history. The free plan includes 100 lookups a month. A credit is only counted when someone is found.\n\n**Setup:**\n1. On **PDL Request**, create a Header Auth credential: name \`X-Api-Key\`, value your People Data Labs API key.\n2. Copy this workflow's ID into the core Config as one of \`lookup_1_connector_id\` to \`lookup_3_connector_id\`, and name that slot \`people_data_labs\`.\n\n**Action:** lookup_person.`);
   b.passthroughTrigger('When Called by Core', [-480, 300]);
   b.config('Config', [-240, 300], { api_base_url: 'https://api.peopledatalabs.com', min_likelihood: '3' }, { includeOther: true });
   b.code('Keep Lookups', [0, 300], "return $input.all().filter((i) => i.json.action === 'lookup_person');");
@@ -173,9 +174,63 @@ function lookupPdl() {
   b.code('Summarize', [480, 300], `${inline('src/connectors/pdl.js')}
 
 // ---- n8n entry ----
-return { json: { contact_id: $('Keep Lookups').item.json.contact_id, ...summarizeLookup($json) } };`, {}, 'runOnceForEachItem');
+const summary = summarizeLookup($json);
+return { json: { contact_id: $('Keep Lookups').item.json.contact_id, provider: 'people_data_labs', credits_used: summary.found ? 1 : 0, ...summary } };`, {}, 'runOnceForEachItem');
   b.chain('When Called by Core', 'Config', 'Keep Lookups', 'PDL Request', 'Summarize');
   return b.workflow('Connector: People Data Labs (lookup)');
+}
+
+// ------------------------------------------------------------------ Lookup: Apollo
+function lookupApollo() {
+  const b = makeBuilder('conn/lookup-apollo');
+  note(b, 'Connector: Apollo (lookup)', `Looks each person up with Apollo's People Enrichment and returns their current job, work history and (when Apollo has it) their new work email, so the email finder can be skipped.\n\nApollo only charges a credit when it finds someone. **Phone numbers are never requested** (they cost extra credits).\n\n**Setup:**\n1. On **Apollo Request**, create a Header Auth credential: name \`x-api-key\`, value your Apollo API key (Settings > Integrations > API).\n2. Copy this workflow's ID into the core Config as \`lookup_1_connector_id\` (slot name \`apollo\`), with a monthly budget.\n\n**Action:** lookup_person.`, 600);
+  b.passthroughTrigger('When Called by Core', [-480, 300]);
+  b.config('Config', [-240, 300], { api_base_url: 'https://api.apollo.io' }, { includeOther: true });
+  b.code('Build Requests', [0, 300], `${inline('src/connectors/apollo.js')}
+
+// ---- n8n entry ----
+return $input.all()
+  .filter((i) => i.json.action === 'lookup_person')
+  .map((i) => ({ json: { ...i.json, apollo_body: apolloMatchBody(i.json) } }));`);
+  http(b, 'Apollo Request', [240, 300], {
+    method: 'POST',
+    url: "={{ $json.api_base_url + '/api/v1/people/match' }}",
+    sendBody: true, specifyBody: 'json',
+    jsonBody: '={{ JSON.stringify($json.apollo_body) }}',
+  });
+  b.code('Summarize', [480, 300], `${inline('src/connectors/apollo.js')}
+
+// ---- n8n entry ----
+return { json: { contact_id: $('Build Requests').item.json.contact_id, provider: 'apollo', ...summarizeApollo($json) } };`, {}, 'runOnceForEachItem');
+  b.chain('When Called by Core', 'Config', 'Build Requests', 'Apollo Request', 'Summarize');
+  return b.workflow('Connector: Apollo (lookup)');
+}
+
+// ------------------------------------------------------------------ Lookup: Clay (async)
+function lookupClay() {
+  const b = makeBuilder('conn/lookup-clay');
+  note(b, 'Connector: Clay (lookup, answers later)', `Sends each person to a Clay table, where Clay's waterfall checks its data providers. Clay can't answer right away, so this connector returns **pending**; Clay posts the result to the **Lookup Callback** workflow, which finishes the investigation.\n\nEach person sent counts as one credit against this slot's monthly budget. Valari only sends people the earlier lookup tools couldn't find, and never sends the same person twice within 30 days.\n\n**Setup:**\n1. In Clay, create a table with a **Webhook** source and copy its URL into \`clay_webhook_url\`. If the webhook has an auth token, create a Header Auth credential (name \`x-clay-webhook-auth\`) on **Send to Clay**; otherwise set its authentication to None.\n2. Add your enrichment columns (title, company, company domain, start date, work email).\n3. Add an **HTTP API** column that POSTs \`valari_contact_id\`, \`company_name\`, \`company_domain\`, \`job_title\`, \`job_start_date\`, \`linkedin_url\` and \`work_email\` to the \`callback_url\` sent with each row.\n4. Paste the Lookup Callback's Production URL into \`callback_url\` below.\n5. Copy this workflow's ID into the core Config as \`lookup_2_connector_id\` (slot name \`clay\`).\n\n**Action:** lookup_person.`, 820);
+  b.passthroughTrigger('When Called by Core', [-480, 300]);
+  b.config('Config', [-240, 300], { clay_webhook_url: 'PASTE_YOUR_CLAY_TABLE_WEBHOOK_URL', callback_url: 'PASTE_YOUR_VALARI_LOOKUP_CALLBACK_URL' }, { includeOther: true });
+  b.code('Keep Lookups', [0, 300], "return $input.all().filter((i) => i.json.action === 'lookup_person');");
+  http(b, 'Send to Clay', [240, 300], {
+    method: 'POST',
+    url: '={{ $json.clay_webhook_url }}',
+    sendBody: true, specifyBody: 'json',
+    jsonBody: '={{ JSON.stringify({ valari_contact_id: $json.contact_id, full_name: $json.full_name, first_name: $json.first_name, last_name: $json.last_name, work_email: $json.work_email, linkedin_url: $json.linkedin_url, last_company: $json.last_company, last_company_domain: $json.last_company_domain, last_title: $json.last_title, callback_url: $json.callback_url }) }}',
+  });
+  b.code('Mark Pending', [480, 300], `const req = $('Keep Lookups').item.json;
+const failed = !!$json.error;
+return { json: {
+  contact_id: req.contact_id,
+  provider: 'clay',
+  found: false,
+  pending: !failed,
+  credits_used: failed ? 0 : 1,
+  note: failed ? 'Lookup failed: could not send to Clay (' + String($json.error.message || $json.error).slice(0, 160) + ')' : 'Sent to Clay. Waiting for the result.',
+} };`, {}, 'runOnceForEachItem');
+  b.chain('When Called by Core', 'Config', 'Keep Lookups', 'Send to Clay', 'Mark Pending');
+  return b.workflow('Connector: Clay (lookup)');
 }
 
 // ------------------------------------------------------------------ Email finder: Hunter
@@ -292,6 +347,8 @@ module.exports = {
   'connectors/crm-salesforce.json': crmSalesforce,
   'connectors/crm-google-sheets.json': crmSheets,
   'connectors/signals-gmail.json': signalsGmail,
+  'connectors/lookup-apollo.json': lookupApollo,
+  'connectors/lookup-clay.json': lookupClay,
   'connectors/lookup-people-data-labs.json': lookupPdl,
   'connectors/email-hunter.json': emailHunter,
   'connectors/sequence-salesloft.json': sequenceSalesloft,

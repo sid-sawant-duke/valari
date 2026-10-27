@@ -1,0 +1,163 @@
+{
+  "name": "Connector: Apollo (lookup)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Apollo (lookup)\n\nLooks each person up with Apollo's People Enrichment and returns their current job, work history and (when Apollo has it) their new work email, so the email finder can be skipped.\n\nApollo only charges a credit when it finds someone. **Phone numbers are never requested** (they cost extra credits).\n\n**Setup:**\n1. On **Apollo Request**, create a Header Auth credential: name `x-api-key`, value your Apollo API key (Settings > Integrations > API).\n2. Copy this workflow's ID into the core Config as `lookup_1_connector_id` (slot name `apollo`), with a monthly budget.\n\n**Action:** lookup_person.\n\n**Publish** this workflow once it is set up (top right). n8n only lets scheduled and webhook-started runs call published workflows.\n\nContract: docs/connectors.md in the repo.",
+        "height": 660,
+        "width": 600,
+        "color": 4
+      },
+      "id": "88b43c31-1207-43ee-a042-43170fc4ef78",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "3ec9d7b5-4049-4942-a6fe-d5adc1f48f17",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0ac39595-4886-4ac1-a0ec-9f18252a2cc4",
+              "name": "api_base_url",
+              "value": "https://api.apollo.io",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "27225ef6-93ed-49d2-aa7e-8d13f25cb083",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Apollo connector logic: builds the People Enrichment request and trims the response\n// to the standard lookup shape. Inlined into the Apollo connector and the n8n template.\n\n// Request body for POST /api/v1/people/match. Phone numbers are never requested (they cost extra credits).\nfunction apolloMatchBody(req) {\n  const clean = (v) => String(v ?? '').trim();\n  const body = { reveal_personal_emails: false, reveal_phone_number: false };\n  if (clean(req.linkedin_url)) body.linkedin_url = clean(req.linkedin_url);\n  if (clean(req.work_email)) body.email = clean(req.work_email);\n  if (clean(req.first_name)) body.first_name = clean(req.first_name);\n  if (clean(req.last_name)) body.last_name = clean(req.last_name);\n  if (!clean(req.first_name) && clean(req.full_name)) body.name = clean(req.full_name);\n  if (clean(req.last_company)) body.organization_name = clean(req.last_company);\n  if (clean(req.last_company_domain)) body.domain = clean(req.last_company_domain);\n  return body;\n}\n\nfunction summarizeApollo(res) {\n  const clean = (v) => String(v ?? '').trim();\n  const r = res || {};\n  const p = r.person;\n  if (r.error || !p || clean(r.match_confidence).toLowerCase() === 'none') {\n    const raw = r.error ? (r.error.message || r.error.description || JSON.stringify(r.error)) : 'No match';\n    const noMatch = !r.error || /\\b404\\b|not found|no match/i.test(String(raw));\n    return {\n      found: false,\n      credits_used: 0,\n      note: noMatch && !/credential|unauthor|401|403|key/i.test(String(raw))\n        ? 'Apollo has no matching person. This is not evidence that they moved.'\n        : `Lookup failed: ${String(raw).slice(0, 200)}`,\n    };\n  }\n  const org = p.organization || {};\n  const history = Array.isArray(p.employment_history) ? p.employment_history : [];\n  const current = history.find((e) => e && e.current) || {};\n  const domain = (s) => clean(s).toLowerCase().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0];\n  const experience = history\n    .slice()\n    .sort((a, b) => String(b.start_date || '').localeCompare(String(a.start_date || '')))\n    .slice(0, 6)\n    .map((e) => ({\n      company: clean(e.organization_name),\n      company_website: '',\n      title: clean(e.title),\n      start_date: clean(e.start_date),\n      end_date: e.end_date || null,\n      is_primary: Boolean(e.current),\n    }));\n  return {\n    found: true,\n    credits_used: 1,\n    full_name: clean(p.name),\n    linkedin_url: clean(p.linkedin_url),\n    location: [p.city, p.state, p.country].map(clean).filter(Boolean).join(', '),\n    job_title: clean(p.title) || clean(current.title),\n    job_company_name: clean(org.name) || clean(current.organization_name),\n    job_company_website: domain(org.primary_domain || org.website_url),\n    job_start_date: clean(current.start_date),\n    job_last_changed: '',\n    job_last_verified: '',\n    experience,\n    email: clean(p.email),\n    email_status: clean(p.email_status),\n  };\n}\n\n// ---- n8n entry ----\nreturn $input.all()\n  .filter((i) => i.json.action === 'lookup_person')\n  .map((i) => ({ json: { ...i.json, apollo_body: apolloMatchBody(i.json) } }));"
+      },
+      "id": "4201544b-d5b0-4ccd-aa31-9093d50dbefe",
+      "name": "Build Requests",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "method": "POST",
+        "url": "={{ $json.api_base_url + '/api/v1/people/match' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify($json.apollo_body) }}"
+      },
+      "id": "ce768225-bdc1-4773-aa9c-69abd2beaa30",
+      "name": "Apollo Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        240,
+        300
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "// Apollo connector logic: builds the People Enrichment request and trims the response\n// to the standard lookup shape. Inlined into the Apollo connector and the n8n template.\n\n// Request body for POST /api/v1/people/match. Phone numbers are never requested (they cost extra credits).\nfunction apolloMatchBody(req) {\n  const clean = (v) => String(v ?? '').trim();\n  const body = { reveal_personal_emails: false, reveal_phone_number: false };\n  if (clean(req.linkedin_url)) body.linkedin_url = clean(req.linkedin_url);\n  if (clean(req.work_email)) body.email = clean(req.work_email);\n  if (clean(req.first_name)) body.first_name = clean(req.first_name);\n  if (clean(req.last_name)) body.last_name = clean(req.last_name);\n  if (!clean(req.first_name) && clean(req.full_name)) body.name = clean(req.full_name);\n  if (clean(req.last_company)) body.organization_name = clean(req.last_company);\n  if (clean(req.last_company_domain)) body.domain = clean(req.last_company_domain);\n  return body;\n}\n\nfunction summarizeApollo(res) {\n  const clean = (v) => String(v ?? '').trim();\n  const r = res || {};\n  const p = r.person;\n  if (r.error || !p || clean(r.match_confidence).toLowerCase() === 'none') {\n    const raw = r.error ? (r.error.message || r.error.description || JSON.stringify(r.error)) : 'No match';\n    const noMatch = !r.error || /\\b404\\b|not found|no match/i.test(String(raw));\n    return {\n      found: false,\n      credits_used: 0,\n      note: noMatch && !/credential|unauthor|401|403|key/i.test(String(raw))\n        ? 'Apollo has no matching person. This is not evidence that they moved.'\n        : `Lookup failed: ${String(raw).slice(0, 200)}`,\n    };\n  }\n  const org = p.organization || {};\n  const history = Array.isArray(p.employment_history) ? p.employment_history : [];\n  const current = history.find((e) => e && e.current) || {};\n  const domain = (s) => clean(s).toLowerCase().replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0];\n  const experience = history\n    .slice()\n    .sort((a, b) => String(b.start_date || '').localeCompare(String(a.start_date || '')))\n    .slice(0, 6)\n    .map((e) => ({\n      company: clean(e.organization_name),\n      company_website: '',\n      title: clean(e.title),\n      start_date: clean(e.start_date),\n      end_date: e.end_date || null,\n      is_primary: Boolean(e.current),\n    }));\n  return {\n    found: true,\n    credits_used: 1,\n    full_name: clean(p.name),\n    linkedin_url: clean(p.linkedin_url),\n    location: [p.city, p.state, p.country].map(clean).filter(Boolean).join(', '),\n    job_title: clean(p.title) || clean(current.title),\n    job_company_name: clean(org.name) || clean(current.organization_name),\n    job_company_website: domain(org.primary_domain || org.website_url),\n    job_start_date: clean(current.start_date),\n    job_last_changed: '',\n    job_last_verified: '',\n    experience,\n    email: clean(p.email),\n    email_status: clean(p.email_status),\n  };\n}\n\n// ---- n8n entry ----\nreturn { json: { contact_id: $('Build Requests').item.json.contact_id, provider: 'apollo', ...summarizeApollo($json) } };"
+      },
+      "id": "d5a01ec2-5b62-4f02-aae7-db3cbdfbd38c",
+      "name": "Summarize",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        300
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Build Requests",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Requests": {
+      "main": [
+        [
+          {
+            "node": "Apollo Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Apollo Request": {
+      "main": [
+        [
+          {
+            "node": "Summarize",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

@@ -168,6 +168,10 @@
               "type": "string"
             },
             {
+              "name": "lookup_source",
+              "type": "string"
+            },
+            {
               "name": "new_email",
               "type": "string"
             },
