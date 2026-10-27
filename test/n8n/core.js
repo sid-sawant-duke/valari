@@ -26,13 +26,13 @@ const server = http.createServer((req, res) => {
     if (url.pathname === '/api/v1/people/match') {
       const b = JSON.parse(body || '{}');
       if (b.reveal_phone_number !== false) return json(400, { error: 'phone reveal must be off' });
-      if ((b.linkedin_url || '').includes('jordan')) return json(200, { person: { name: 'Jordan Avery', title: 'Staff Data Analyst', email: 'jordan.avery@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'Acme', title: 'Staff Data Analyst', start_date: '2026-09-01', current: true }, { organization_name: 'Northwind', title: 'Senior Data Analyst', start_date: '2021-02-01', end_date: '2026-08-01', current: false }] } });
+      if ((b.linkedin_url || '').includes('jordan')) return json(200, { person: { name: 'Jordan Avery', title: 'Staff UX Researcher', email: 'jordan.avery@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'Acme', title: 'Staff UX Researcher', start_date: '2026-09-01', current: true }, { organization_name: 'Northwind', title: 'Senior UX Researcher', start_date: '2021-02-01', end_date: '2026-08-01', current: false }] } });
       return json(200, { person: null });
     }
     if (url.pathname === '/v5/person/enrich') {
       const profile = url.searchParams.get('profile') || '';
-      if (profile.includes('jordan')) return json(200, { status: 200, likelihood: 9, data: { full_name: 'jordan avery', job_title: 'staff data analyst', job_company_name: 'acme', job_company_website: 'acme.example', job_start_date: '2026-09', job_last_verified: '2026-10-15', experience: [{ company: { name: 'acme', website: 'acme.example' }, title: { name: 'staff data analyst' }, start_date: '2026-09', end_date: null, is_primary: true }, { company: { name: 'northwind' }, title: { name: 'senior data analyst' }, start_date: '2021-02', end_date: '2026-08' }] } });
-      if (profile.includes('lee')) return json(200, { status: 200, likelihood: 8, data: { full_name: 'lee park', job_title: 'operations manager', job_company_name: 'zeta labs', job_company_website: 'zeta.example', job_start_date: '2026-08', experience: [] } });
+      if (profile.includes('jordan')) return json(200, { status: 200, likelihood: 9, data: { full_name: 'jordan avery', job_title: 'staff ux researcher', job_company_name: 'acme', job_company_website: 'acme.example', job_start_date: '2026-09', job_last_verified: '2026-10-15', experience: [{ company: { name: 'acme', website: 'acme.example' }, title: { name: 'staff ux researcher' }, start_date: '2026-09', end_date: null, is_primary: true }, { company: { name: 'northwind' }, title: { name: 'senior ux researcher' }, start_date: '2021-02', end_date: '2026-08' }] } });
+      if (profile.includes('lee')) return json(200, { status: 200, likelihood: 8, data: { full_name: 'lee park', job_title: 'product designer', job_company_name: 'zeta labs', job_company_website: 'zeta.example', job_start_date: '2026-08', experience: [] } });
       return json(404, { status: 404, error: { type: 'not_found', message: 'No records were found matching your request' } });
     }
     if (url.pathname === '/v2/email-finder') {
@@ -59,8 +59,8 @@ const server = http.createServer((req, res) => {
       const user = msgs.filter((m) => m.role === 'user').map((m) => (typeof m.content === 'string' ? m.content : JSON.stringify(m.content))).join('\n');
       const usedTool = msgs.some((m) => m.role === 'tool');
       let verdict;
-      if (/"job_company_name": "acme"/i.test(user)) verdict = { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff Data Analyst', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- Apollo: Staff Data Analyst at Acme since 2026-09', draft_opener: 'Congrats on joining Acme! You built a great analytics practice at Northwind. Happy to help you get set up there.' };
-      else if (/"job_company_name": "zeta labs"/i.test(user)) verdict = { outcome: 'confirmed', confidence: 'medium', new_company: 'Zeta Labs', new_company_domain: 'zeta.example', new_title: 'Operations Manager', started_new_role: '2026-08', side_role: false, icp_fit: 'partial', evidence: '- Clay: Operations Manager at Zeta Labs since 2026-08', draft_opener: 'Congrats on the move to Zeta Labs!' };
+      if (/"job_company_name": "acme"/i.test(user)) verdict = { outcome: 'confirmed', confidence: 'high', new_company: 'Acme', new_company_domain: 'acme.example', new_title: 'Staff UX Researcher', started_new_role: '2026-09', side_role: false, icp_fit: 'strong', evidence: '- Apollo: Staff UX Researcher at Acme since 2026-09', draft_opener: 'Congrats on joining Acme! You built a great research repository at Northwind. Happy to help you get set up there.' };
+      else if (/"job_company_name": "zeta labs"/i.test(user)) verdict = { outcome: 'confirmed', confidence: 'medium', new_company: 'Zeta Labs', new_company_domain: 'zeta.example', new_title: 'Product Designer', started_new_role: '2026-08', side_role: false, icp_fit: 'partial', evidence: '- Clay: Product Designer at Zeta Labs since 2026-08', draft_opener: 'Congrats on the move to Zeta Labs!' };
       else verdict = { outcome: 'no_change', confidence: 'low', new_company: '', new_company_domain: '', new_title: '', started_new_role: '', side_role: false, icp_fit: 'unknown', evidence: '- No lookup tool found a current role', draft_opener: '' };
       const call = usedTool ? { name: 'format_final_json_response', args: { output: verdict } } : { name: 'thinking_tool', args: { thought: 'Checking the lookup against the signal.' } };
       return json(200, { id: 'x', object: 'chat.completion', created: 1, model: b.model, choices: [{ index: 0, message: { role: 'assistant', content: null, tool_calls: [{ id: `c${hits.length}`, type: 'function', function: { name: call.name, arguments: JSON.stringify(call.args) } }] }, finish_reason: 'tool_calls' }], usage: { prompt_tokens: 1, completion_tokens: 1, total_tokens: 2 } });
@@ -126,7 +126,7 @@ let projectId;
   const crmW = await createWorkflow(stub('Stub CRM', `
 const action = $input.first().json.action;
 if (action === 'list_champions') return [
-  { contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', work_email: 'jordan.avery@northwind.example', linkedin_url: 'https://www.linkedin.com/in/example-jordan', last_company: 'Northwind', last_company_domain: 'northwind.example', last_title: 'Senior Data Analyst', role_type: 'champion', owner_ae_email: 'priya@us.example', notes: 'Ran the analytics rollout.' },
+  { contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', work_email: 'jordan.avery@northwind.example', linkedin_url: 'https://www.linkedin.com/in/example-jordan', last_company: 'Northwind', last_company_domain: 'northwind.example', last_title: 'Senior UX Researcher', role_type: 'champion', owner_ae_email: 'priya@us.example', notes: 'Ran the research repository rollout.' },
   { contact_id: '003B', full_name: 'Sam Okafor', work_email: 'sam@brightcart.example', last_company: 'Brightcart', role_type: 'buyer', owner_ae_email: 'priya@us.example' },
   { contact_id: '003C', full_name: 'Riley Chen', work_email: 'riley@harbor.example', last_company: 'Harbor', do_not_contact: 'TRUE' },
 ].map((json) => ({ json }));
@@ -154,9 +154,9 @@ return [];`));
     lookup_2_name: 'clay', lookup_2_connector_id: ids.clay, lookup_2_monthly_budget: 50,
     lookup_3_name: 'people_data_labs', lookup_3_connector_id: ids.pdl, lookup_3_monthly_budget: 100,
     email_finder_connector_id: ids.hunter, sequence_connector_id: ids.sl, alert_connector_id: ids.slack,
-    product_description: 'An analytics platform that data teams use to build dashboards.',
-    icp_description: 'Mid-market software companies with in-house data teams.',
-    personas: JSON.stringify([{ name: 'Analyst', keywords: ['data analyst', 'analytics', 'analyst'], points: 25 }, { name: 'Ops', keywords: ['revops', 'operations', 'ops'], points: 20 }]),
+    product_description: 'A research repository that UX research and design teams use to analyze interviews.',
+    icp_description: 'Product-led software and consumer brands with in-house UX research teams.',
+    personas: JSON.stringify([{ name: 'Researcher', keywords: ['ux research', 'user research', 'research'], points: 25 }, { name: 'Designer', keywords: ['product design', 'ux design', 'designer'], points: 20 }]),
     team_directory: JSON.stringify({ 'priya@us.example': { name: 'Priya Shah', slack_id: 'U1' }, 'marcus@us.example': { name: 'Marcus Lee', slack_id: 'U2', salesloft_user_id: '42' }, default: { name: 'SDR queue', slack_id: 'S0', email: 'sdr@us.example' } }),
   });
   const cm = daily.nodes.find((n) => n.name === 'Chat Model');
@@ -230,7 +230,7 @@ return [];`));
     throw new Error('no case for ' + id + ' after the callback');
   };
   hits.length = 0;
-  const leePin = { Webhook: [{ json: { headers: {}, params: {}, query: {}, body: { valari_contact_id: 'product:lee@oldco.example', company_name: 'Zeta Labs', company_domain: 'zeta.example', job_title: 'Operations Manager', job_start_date: '2026-08', work_email: 'lee@zeta.example' } } }] };
+  const leePin = { Webhook: [{ json: { headers: {}, params: {}, query: {}, body: { valari_contact_id: 'product:lee@oldco.example', company_name: 'Zeta Labs', company_domain: 'zeta.example', job_title: 'Product Designer', job_start_date: '2026-08', work_email: 'lee@zeta.example' } } }] };
   const cbw = await createWorkflow({ ...cb, name: 'callback lee' }, leePin);
   const cbr = await runWorkflow(cbw, 'Webhook', leePin);
   console.log('\nCALLBACK (Lee):', cbr.status, cbr.error ? cbr.error.message : '');

@@ -14,7 +14,7 @@ const cfg = {
   lookup_cache_days: 14, lookup_repeat_days: 30, budget_warning_percent: 80,
 };
 const person = (id, extra = {}) => ({ contact_id: id, full_name: `Person ${id}`, first_name: 'P', last_name: id, work_email: `${id}@old.example`, last_company: 'OldCo', last_company_domain: 'old.example', trigger: 'signal', signal_date: '2026-10-20', ...extra });
-const moved = (id, provider = 'apollo') => ({ contact_id: id, provider, found: true, credits_used: 1, job_title: 'Operations Manager', job_company_name: 'Acme', job_company_website: 'acme.example', job_start_date: '2026-09', experience: [] });
+const moved = (id, provider = 'apollo') => ({ contact_id: id, provider, found: true, credits_used: 1, job_title: 'Designer', job_company_name: 'Acme', job_company_website: 'acme.example', job_start_date: '2026-09', experience: [] });
 
 test('isResolved: a new company resolves; the old company after a bounce only resolves if verified after it', () => {
   const c = person('a');
@@ -89,7 +89,7 @@ test('collectLookups: a fresh cached answer is reused without spending credits',
 });
 
 test('Clay callback becomes a cache row the next run can use', () => {
-  const row = normalizeCallback({ body: { valari_contact_id: 'b', company_name: 'Zeta Labs', company_domain: 'https://www.zeta.example', job_title: 'Operations Manager', work_email: 'B@zeta.example' } }, [{ contact_id: 'b', tried_json: JSON.stringify({ apollo: '2026-10-21T00:00:00Z' }) }], NOW);
+  const row = normalizeCallback({ body: { valari_contact_id: 'b', company_name: 'Zeta Labs', company_domain: 'https://www.zeta.example', job_title: 'Product Designer', work_email: 'B@zeta.example' } }, [{ contact_id: 'b', tried_json: JSON.stringify({ apollo: '2026-10-21T00:00:00Z' }) }], NOW);
   assert.strictEqual(row.contact_id, 'b');
   assert.strictEqual(row.pending, 'FALSE');
   const s = JSON.parse(row.summary_json);
@@ -104,7 +104,7 @@ test('Apollo request never asks for phone numbers, and the response maps to the 
   const body = apolloMatchBody(person('a', { linkedin_url: 'https://linkedin.com/in/a' }));
   assert.strictEqual(body.reveal_phone_number, false);
   assert.strictEqual(body.linkedin_url, 'https://linkedin.com/in/a');
-  const s = summarizeApollo({ person: { name: 'Pat A', title: 'Operations Manager', email: 'pat@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'OldCo', title: 'Analyst', start_date: '2021-01-01', end_date: '2026-08-01', current: false }, { organization_name: 'Acme', title: 'Operations Manager', start_date: '2026-09-01', current: true }] } });
+  const s = summarizeApollo({ person: { name: 'Pat A', title: 'Product Designer', email: 'pat@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'OldCo', title: 'Designer', start_date: '2021-01-01', end_date: '2026-08-01', current: false }, { organization_name: 'Acme', title: 'Product Designer', start_date: '2026-09-01', current: true }] } });
   assert.deepStrictEqual([s.found, s.credits_used, s.job_company_name, s.job_company_website, s.job_start_date, s.experience[0].company], [true, 1, 'Acme', 'acme.example', '2026-09-01', 'Acme']);
   assert.strictEqual(summarizeApollo({ person: null }).found, false);
   assert.strictEqual(summarizeApollo({ person: null }).credits_used, 0);

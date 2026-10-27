@@ -23,7 +23,7 @@ async function run(file, label, pins, lastNode) {
   const champs = await run('crm-salesforce.json', 'list_champions', {
     'When Called by Core': J([{ action: 'list_champions' }]),
     'Query Champions': J([
-      { attributes: { type: 'CampaignMember' }, ContactId: '003A', Status: 'Champion', Contact: { FirstName: 'Jordan', LastName: 'Avery', Email: 'jordan@northwind.example', Title: 'Data Analyst', Description: 'Rolled out to 3 teams', HasOptedOutOfEmail: false, Account: { Name: 'Northwind', Website: 'www.northwind.example' }, OwnerId: '005P', Owner: { Name: 'Priya Shah', Email: 'priya@us.example' } } },
+      { attributes: { type: 'CampaignMember' }, ContactId: '003A', Status: 'Champion', Contact: { FirstName: 'Jordan', LastName: 'Avery', Email: 'jordan@northwind.example', Title: 'UX Researcher', Description: 'Rolled out to 3 teams', HasOptedOutOfEmail: false, Account: { Name: 'Northwind', Website: 'www.northwind.example' }, OwnerId: '005P', Owner: { Name: 'Priya Shah', Email: 'priya@us.example' } } },
       { attributes: { type: 'CampaignMember' }, ContactId: '003B', Status: 'Responded', Contact: { FirstName: 'Sam', LastName: 'Okafor', Email: 'sam@brightcart.example', HasOptedOutOfEmail: true, Account: null, OwnerId: '005P', Owner: { Name: 'Priya Shah', Email: 'priya@us.example' } } },
     ]),
   }, 'Map Champions');
@@ -39,8 +39,8 @@ async function run(file, label, pins, lastNode) {
 
   const moves = await run('crm-salesforce.json', 'record_move', {
     'When Called by Core': J([
-      { action: 'record_move', contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', new_email: 'jordan@acme.example', new_title: 'Staff Analyst', new_company: 'Acme', new_company_domain: 'acme.example', crm_account_id: '001A', owner_crm_id: '005M', task_subject: 'Champion moved: Jordan Avery is now at Acme', task_body: 'Former champion...' },
-      { action: 'record_move', contact_id: 'product:lee@oldco.example', first_name: 'Lee', last_name: 'Park', new_email: '', new_title: 'Operations Manager', new_company: 'Zeta Labs', new_company_domain: 'zeta.example', crm_account_id: '', owner_crm_id: '', task_subject: 'Champion moved: Lee Park is now at Zeta Labs', task_body: 'Former user...' },
+      { action: 'record_move', contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', new_email: 'jordan@acme.example', new_title: 'Staff Researcher', new_company: 'Acme', new_company_domain: 'acme.example', crm_account_id: '001A', owner_crm_id: '005M', task_subject: 'Champion moved: Jordan Avery is now at Acme', task_body: 'Former champion...' },
+      { action: 'record_move', contact_id: 'product:lee@oldco.example', first_name: 'Lee', last_name: 'Park', new_email: '', new_title: 'Designer', new_company: 'Zeta Labs', new_company_domain: 'zeta.example', crm_account_id: '', owner_crm_id: '', task_subject: 'Champion moved: Lee Park is now at Zeta Labs', task_body: 'Former user...' },
     ]),
     'Create Contact': J([{ id: '003NEW', success: true, errors: [] }]),
     'Create Lead': J([{ id: '00QNEW', success: true, errors: [] }]),

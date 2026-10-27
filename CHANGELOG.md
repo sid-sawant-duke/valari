@@ -16,7 +16,7 @@
 
 - New connector design with a documented [contract](docs/connectors.md).
 - Connectors: Salesforce, Google Sheets (CRM or product-user list), Gmail (signals and alerts), People Data Labs, Hunter, Salesloft, Slack.
-- **Persona scoring**: score moves by the people you care about (for example data analysts), not only seniority. Every weight is configurable.
+- **Persona scoring**: score moves by the people you care about (for example UX researchers), not only seniority. Every weight is configurable.
 - **New work email**: finds the switcher's email at their new company.
 - **CRM write-back**: creates a Contact on the account (or a Lead) and a Task for the owner.
 - **Sequences**: enrolls confirmed switchers in a per-bucket cadence. The first step is a manual email a rep reviews.
