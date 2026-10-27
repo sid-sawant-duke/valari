@@ -1,0 +1,461 @@
+{
+  "name": "Connector: Salesloft (sequence)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Salesloft (sequence)\n\nAdds each confirmed switcher to the right cadence, with the draft opener saved as a note on the person.\n\n**Setup:**\n1. Create a Header Auth credential: name `Authorization`, value `Bearer YOUR_SALESLOFT_API_KEY`, and select it on every HTTP node.\n2. In **Config**, map each account bucket to a cadence ID: `net_new`, `lost_deal`, `open_deal`, `customer` (and an optional `default`). Buckets without a cadence are skipped.\n3. **Make the first step of each cadence a manual email** so the rep reviews it before anything is sent.\n4. Optional: `user_ids_by_email` maps rep emails to Salesloft user IDs so people land in the right rep's cadence. Otherwise the API key's user is used (use team cadences).\n5. Copy this workflow's ID into the core Config as `sequence_connector_id`.\n\n**Action:** enroll.\n\nContract: docs/connectors.md in the repo.",
+        "height": 720,
+        "width": 600,
+        "color": 4
+      },
+      "id": "c3c3e929-f778-490a-a6f2-63b7124d06fc",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "dfd94ca6-9153-40a4-a659-a09febbafc9f",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c609c3f2-6a27-48dd-add3-e0c3f48270ca",
+              "name": "api_base_url",
+              "value": "https://api.salesloft.com",
+              "type": "string"
+            },
+            {
+              "id": "7b2989fa-b8f1-4613-a615-13abe2588521",
+              "name": "cadence_ids",
+              "value": "{\"net_new\": {\"id\": 0, \"name\": \"Job switchers: net new\"}, \"lost_deal\": {\"id\": 0, \"name\": \"Job switchers: lost deal\"}, \"open_deal\": {\"id\": 0, \"name\": \"Job switchers: open deal\"}, \"customer\": {\"id\": 0, \"name\": \"Job switchers: existing customer\"}}",
+              "type": "string"
+            },
+            {
+              "id": "220ceb6d-50cd-4081-ab11-02f01c10ae45",
+              "name": "user_ids_by_email",
+              "value": "{}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "8eef3add-01a6-4a8a-ab96-5af974e7a454",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small mapping helpers for the Gmail, Hunter and Salesloft connectors. Inlined into their Code nodes.\n\n// Gmail (raw format) → the standard signal message.\nfunction normalizeGmail(m) {\n  const clean = (v) => String(v ?? '').trim();\n  if (!m || typeof m !== 'object' || !m.id) return null;\n  return {\n    id: clean(m.id),\n    subject: clean(m.subject || m.Subject),\n    from: clean((m.from && (m.from.text || (m.from.value && m.from.value[0] && m.from.value[0].address))) || m.From),\n    text: clean(m.text || m.snippet).slice(0, 4000),\n    date: clean(m.date),\n    headers: m.headers && typeof m.headers === 'object' ? m.headers : {},\n  };\n}\n\n// Hunter Email Finder response → the standard email result.\nfunction mapHunter(req, res) {\n  const clean = (v) => String(v ?? '').trim();\n  const d = (res && res.data) || {};\n  const email = clean(d.email);\n  const v = clean(d.verification && d.verification.status).toLowerCase();\n  const status = !email ? '' : v === 'valid' ? 'valid' : v === 'invalid' ? 'invalid' : v === 'accept_all' ? 'risky' : 'unknown';\n  return {\n    contact_id: clean(req.contact_id),\n    email,\n    confidence: email && d.score !== undefined && d.score !== null ? Number(d.score) : '',\n    status,\n    source: 'hunter',\n    error: res && res.error ? clean(res.error.message || res.error) : '',\n  };\n}\n\n// Salesloft: pick the cadence for each enroll request, or say why it's skipped.\n// cadenceIds: { \"net_new\": 123, \"lost_deal\": 456, \"open_deal\": 789, \"customer\": 101, \"default\": 999 }\nfunction planSalesloft(requests, cadenceIds, userIdsByEmail) {\n  const clean = (v) => String(v ?? '').trim();\n  const cads = cadenceIds && typeof cadenceIds === 'object' ? cadenceIds : {};\n  const users = {};\n  for (const [k, v] of Object.entries(userIdsByEmail || {})) users[k.toLowerCase()] = v;\n  return (requests || [])\n    .filter((r) => r && r.action === 'enroll')\n    .map((r) => {\n      const cadence = cads[r.cadence_key] ?? cads.default;\n      const cadenceId = cadence && typeof cadence === 'object' ? clean(cadence.id) : clean(cadence);\n      const cadenceName = cadence && typeof cadence === 'object' ? clean(cadence.name) : '';\n      return {\n        ...r,\n        cadence_id: cadenceId,\n        cadence_name: cadenceName || cadenceId,\n        user_id: clean(r.owner_sequence_user_id) || clean(users[clean(r.owner_email).toLowerCase()]),\n        skip_reason: !cadenceId ? `no cadence set for \"${r.cadence_key}\"` : !clean(r.email) ? 'no email' : '',\n      };\n    });\n}\n\n// ---- n8n entry ----\nconst cfg = $input.first().json;\nconst parse = (s, d) => { try { return typeof s === 'object' ? s : JSON.parse(s || ''); } catch (e) { return d; } };\nconst cads = parse(cfg.cadence_ids, {});\nfor (const k of Object.keys(cads)) if (cads[k] && typeof cads[k] === 'object' && !Number(cads[k].id)) delete cads[k];\nreturn planSalesloft($input.all().map((i) => i.json), cads, parse(cfg.user_ids_by_email, {})).map((json) => ({ json }));"
+      },
+      "id": "fbc778cf-a678-47c8-ad19-822696456246",
+      "name": "Plan",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        0,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "96964be2-f7d9-41b3-a1ff-255492d35c71",
+              "leftValue": "={{ !$json.skip_reason }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "0c37f5ae-c80a-4164-aceb-57e5c2a0dbdd",
+      "name": "Can Enroll?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        240,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "url": "={{ $json.api_base_url + '/v2/people?email_addresses[]=' + encodeURIComponent($json.email) }}"
+      },
+      "id": "ac20d6c2-b257-4f13-a34e-eb9a97f9c684",
+      "name": "Find Person",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        480,
+        260
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "b08f5a3d-37be-4a61-af38-a6e224072948",
+              "leftValue": "={{ !($json.data && $json.data.length) }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "b92fb8e7-44c2-487b-aec5-783dffbed86c",
+      "name": "Need to Create?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        720,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "method": "POST",
+        "url": "={{ $('Plan').item.json.api_base_url + '/v2/people' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify(Object.fromEntries(Object.entries({ email_address: $('Plan').item.json.email, first_name: $('Plan').item.json.first_name, last_name: $('Plan').item.json.last_name, title: $('Plan').item.json.title, owner_id: $('Plan').item.json.user_id ? Number($('Plan').item.json.user_id) : undefined }).filter(([k, v]) => v !== undefined && v !== ''))) }}"
+      },
+      "id": "54c36f28-5e56-4b88-abf5-c71b7580a562",
+      "name": "Create Person",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        960,
+        160
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {},
+      "id": "428e4346-e5d3-444d-a6d5-90324efb7a37",
+      "name": "Merge People",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        1200,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const req = $('Plan').item.json;\nconst d = $json.data;\nconst person = Array.isArray(d) ? d[0] : d;\nreturn { json: { ...req, person_id: person && person.id ? String(person.id) : '', person_error: $json.error ? String($json.error.message || $json.error) : '' } };"
+      },
+      "id": "1a08cc8b-ea45-429a-a791-355b69b05848",
+      "name": "Person Id",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1440,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "method": "POST",
+        "url": "={{ $json.api_base_url + '/v2/cadence_memberships?person_id=' + $json.person_id + '&cadence_id=' + $json.cadence_id + ($json.user_id ? '&user_id=' + $json.user_id : '') }}"
+      },
+      "id": "6d9878f0-4181-4dc1-a4b5-60f9aaf20f0d",
+      "name": "Add to Cadence",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1680,
+        260
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "options": {},
+        "method": "POST",
+        "url": "={{ $('Person Id').item.json.api_base_url + '/v2/notes' }}",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ content: 'Added by Valari (' + ($('Person Id').item.json.priority || 'move') + ').\\n\\n' + ($('Person Id').item.json.note || ''), associated_with_type: 'person', associated_with_id: Number($('Person Id').item.json.person_id) }) }}"
+      },
+      "id": "2389ba81-0867-4991-a4bc-831c3c3f3678",
+      "name": "Add Note",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1920,
+        260
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "mode": "runOnceForEachItem",
+        "jsCode": "const p = $('Person Id').item.json;\nconst m = $('Add to Cadence').item.json;\nconst err = p.person_error || (!p.person_id ? 'could not find or create the person' : '') || (m.error ? String(m.error.message || m.error) : '');\nreturn { json: { contact_id: p.contact_id, enrolled: !err, cadence_id: p.cadence_id, cadence_name: p.cadence_name, person_id: p.person_id, message: err ? err.slice(0, 200) : '' } };"
+      },
+      "id": "0de54115-ad19-40a8-aa60-ab565a454b72",
+      "name": "Enrolled",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2160,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((i) => ({ json: { contact_id: i.json.contact_id, enrolled: false, cadence_id: '', cadence_name: '', person_id: '', message: i.json.skip_reason } }));"
+      },
+      "id": "e0b8a025-902b-4964-a6fc-5285710fb6cb",
+      "name": "Skipped",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        560
+      ]
+    },
+    {
+      "parameters": {},
+      "id": "3c1c53f1-ee76-483a-af7c-8a8476f66315",
+      "name": "Results",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        2400,
+        400
+      ]
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Plan",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Plan": {
+      "main": [
+        [
+          {
+            "node": "Can Enroll?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Can Enroll?": {
+      "main": [
+        [
+          {
+            "node": "Find Person",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Skipped",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Find Person": {
+      "main": [
+        [
+          {
+            "node": "Need to Create?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Need to Create?": {
+      "main": [
+        [
+          {
+            "node": "Create Person",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Merge People",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Create Person": {
+      "main": [
+        [
+          {
+            "node": "Merge People",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge People": {
+      "main": [
+        [
+          {
+            "node": "Person Id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Person Id": {
+      "main": [
+        [
+          {
+            "node": "Add to Cadence",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add to Cadence": {
+      "main": [
+        [
+          {
+            "node": "Add Note",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Add Note": {
+      "main": [
+        [
+          {
+            "node": "Enrolled",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Enrolled": {
+      "main": [
+        [
+          {
+            "node": "Results",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Skipped": {
+      "main": [
+        [
+          {
+            "node": "Results",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

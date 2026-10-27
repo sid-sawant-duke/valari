@@ -1,0 +1,28 @@
+name: Connector request
+description: Ask for (or offer to build) a connector for a tool
+labels: [connector]
+body:
+  - type: input
+    id: tool
+    attributes:
+      label: Tool
+      placeholder: e.g. HubSpot, Outreach, Microsoft Teams
+    validations:
+      required: true
+  - type: dropdown
+    id: slot
+    attributes:
+      label: Which slot?
+      options: [CRM / watchlist, Signals, Lookup, Email finder, Sequence, Alerts, Call now (webhook source)]
+    validations:
+      required: true
+  - type: dropdown
+    id: build
+    attributes:
+      label: Would you build it?
+      options: [Yes, I'd like to build it, I can help test it, I'm just asking]
+  - type: textarea
+    id: notes
+    attributes:
+      label: Notes
+      description: Native n8n node or API docs, auth method, anything unusual.

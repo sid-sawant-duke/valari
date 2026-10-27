@@ -1,0 +1,374 @@
+{
+  "name": "Valari: Call Now Webhook",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Valari: \"Call now\" alerts\n\nWhen a champion who recently moved **opens your email**, **clicks**, **replies**, or **someone from their new company visits your website**, the rep gets a Slack/email alert to call while they're warm.\n\n**Setup:**\n1. Paste the alert connector's workflow ID into **Config**.\n2. Add a Header Auth credential on the **Webhook** (any name/secret pair your tools can send).\n3. Activate, copy the Production URL, and point your tools at it: your sequencing tool's webhooks (email opened/clicked/replied) and your website visitor tool (RB2B, Warmly, Snitcher, Leadfeeder, Apollo, Clearbit, etc.).\n\nAny JSON with an `email` or a company `domain` works. If a tool names fields differently, the **Match Event** node lists the names it understands.",
+        "height": 560,
+        "width": 560,
+        "color": 4
+      },
+      "id": "c51561c7-1629-4cba-a9c9-c4dc174973dd",
+      "name": "Note: Call now",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -380
+      ]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "valari-engagement",
+        "authentication": "headerAuth",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "75b1821f-ae44-41a7-a998-a2605244775f",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [
+        -480,
+        260
+      ],
+      "webhookId": "ba8d7207-f8b0-4ea7-a144-12c42e40e46f"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "15746fa3-172f-46df-a4e7-724c6fa083c6",
+              "name": "alert_connector_id",
+              "value": "",
+              "type": "string"
+            },
+            {
+              "id": "b487d6d1-0646-4f8b-af2e-562708bdf800",
+              "name": "engagement_window_days",
+              "value": 90,
+              "type": "number"
+            },
+            {
+              "id": "97fc4319-b6b5-49ba-a67d-884e84597ddd",
+              "name": "engagement_cooldown_hours",
+              "value": 24,
+              "type": "number"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "c567eb8e-f691-40df-afdd-4dc4c9228a2c",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "table",
+        "operation": "create",
+        "tableName": "valari_state",
+        "columns": {
+          "column": [
+            {
+              "name": "contact_id",
+              "type": "string"
+            },
+            {
+              "name": "full_name",
+              "type": "string"
+            },
+            {
+              "name": "status",
+              "type": "string"
+            },
+            {
+              "name": "last_checked",
+              "type": "string"
+            },
+            {
+              "name": "next_check_on",
+              "type": "string"
+            },
+            {
+              "name": "current_company",
+              "type": "string"
+            },
+            {
+              "name": "current_title",
+              "type": "string"
+            },
+            {
+              "name": "new_company_domain",
+              "type": "string"
+            },
+            {
+              "name": "new_email",
+              "type": "string"
+            },
+            {
+              "name": "moved_at",
+              "type": "string"
+            },
+            {
+              "name": "last_engagement_alert_at",
+              "type": "string"
+            },
+            {
+              "name": "owner_ae",
+              "type": "string"
+            },
+            {
+              "name": "owner_ae_email",
+              "type": "string"
+            },
+            {
+              "name": "owner_ae_slack_id",
+              "type": "string"
+            },
+            {
+              "name": "linkedin_url",
+              "type": "string"
+            },
+            {
+              "name": "crm_record_url",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {
+          "createIfNotExists": true
+        }
+      },
+      "id": "4b1664d2-acdf-41d3-aab4-c8a394470ffc",
+      "name": "Ensure State Table",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        0,
+        260
+      ],
+      "executeOnce": true
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "get",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_state"
+        },
+        "returnAll": true
+      },
+      "id": "f063e283-31e5-4c90-a29b-1dd1bd663a5b",
+      "name": "Read State",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        240,
+        260
+      ],
+      "executeOnce": true,
+      "alwaysOutputData": true
+    },
+    {
+      "parameters": {
+        "jsCode": "// Small helpers shared by the core logic. Inlined into each Code node by scripts/build-workflows.js.\n\nconst clean = (v) => String(v ?? '').trim();\nconst lower = (v) => clean(v).toLowerCase();\nconst truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));\n\nfunction parseJson(value, fallback) {\n  if (value && typeof value === 'object') return value;\n  const s = clean(value);\n  if (!s) return fallback;\n  try { return JSON.parse(s); } catch (e) { return fallback; }\n}\n\nfunction normDomain(s) {\n  let d = lower(s);\n  if (!d) return '';\n  d = d.replace(/^[a-z]+:\\/\\//, '').replace(/^www\\./, '').split('/')[0].split('?')[0];\n  if (d.includes('@')) d = d.split('@').pop();\n  return d;\n}\n\nfunction splitName(full) {\n  const parts = clean(full).split(/\\s+/).filter(Boolean);\n  if (!parts.length) return { first_name: '', last_name: '' };\n  if (parts.length === 1) return { first_name: parts[0], last_name: '' };\n  return { first_name: parts[0], last_name: parts.slice(1).join(' ') };\n}\n\n// Stable 1, 2 or 3 from a contact_id, so a third of the list is swept each month without anyone assigning groups.\nfunction sweepGroupFor(id) {\n  let h = 0;\n  const s = clean(id);\n  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;\n  return String((h % 3) + 1);\n}\n\nconst isoDay = (d) => d.toISOString().slice(0, 10);\n\n// Team directory (Config): { \"<email, CRM owner id or name>\": { name, email, slack_id, crm_id, salesloft_user_id }, \"default\": {...} }\nfunction loadDirectory(cfg) {\n  const raw = parseJson(cfg.team_directory, {}) || {};\n  const dir = {};\n  for (const [k, v] of Object.entries(raw)) dir[lower(k)] = v && typeof v === 'object' ? v : {};\n  return dir;\n}\n\n// Fills an owner's missing name / email / Slack ID / CRM ID / sequence user ID from the directory.\nfunction resolveOwner(dir, owner, useDefault = true) {\n  const o = owner || {};\n  let entry = dir[lower(o.email)] || dir[lower(o.crm_id)] || dir[lower(o.name)];\n  const hasOwner = clean(o.name) || clean(o.email) || clean(o.crm_id);\n  if (!entry && !hasOwner && useDefault) entry = dir.default;\n  entry = entry || {};\n  return {\n    name: clean(o.name) || clean(entry.name),\n    email: lower(o.email) || lower(entry.email),\n    slack_id: clean(o.slack_id) || clean(entry.slack_id),\n    crm_id: clean(o.crm_id) || clean(entry.crm_id),\n    sequence_user_id: clean(o.sequence_user_id) || clean(entry.salesloft_user_id || entry.sequence_user_id),\n  };\n}\n\n// \"Call now\" alerts: matches a webhook event (website visit, email open, click, reply) to a champion\n// who recently moved, and tells their rep to call while they're warm.\n// Pure functions: tested in test/, inlined into the engagement webhook's Code node.\n\n\n// Accepts the payload shapes most tools send. Unknown shapes still work if they contain an email or a company domain.\nfunction normalizeEvent(body) {\n  const b = body && typeof body === 'object' ? (body.body && typeof body.body === 'object' ? body.body : body) : {};\n  const pick = (...paths) => {\n    for (const p of paths) {\n      const v = p.split('.').reduce((o, k) => (o && typeof o === 'object' ? o[k] : undefined), b);\n      if (v !== undefined && v !== null && clean(v) !== '' && typeof v !== 'object') return clean(v);\n    }\n    return '';\n  };\n  let email = lower(pick('email', 'email_address', 'work_email', 'recipient_email', 'recipient', 'to', 'person.email', 'person.email_address', 'contact.email', 'lead.email', 'visitor.email', 'data.email', 'data.email_address'));\n  if (!email) {\n    // Fall back to the first email-looking string anywhere in the payload.\n    const m = JSON.stringify(b).match(/[a-z0-9._%+'-]+@[a-z0-9.-]+\\.[a-z]{2,}/i);\n    email = m ? m[0].toLowerCase() : '';\n  }\n  const domain = normDomain(pick('domain', 'company_domain', 'website', 'company_website', 'company.domain', 'company.website', 'organization.domain', 'organization.website', 'account.domain', 'account.website', 'visitor.company_domain', 'data.domain', 'data.company_domain'));\n  const rawType = lower(pick('event_type', 'event', 'type', 'action', 'activity_type', 'data.event_type'));\n  let type = 'web_visit';\n  // Website events first, so \"page_view\" or \"site_visit\" are never mistaken for email opens.\n  if (/page|visit|session|web|site|identified|reveal/.test(rawType) || !rawType) type = 'web_visit';\n  else if (/repl/.test(rawType)) type = 'reply';\n  else if (/click/.test(rawType)) type = 'email_click';\n  else if (/open|view/.test(rawType)) type = 'email_open';\n  return {\n    type,\n    raw_type: rawType,\n    email,\n    domain: domain || (email ? normDomain(email) : ''),\n    company: pick('company', 'company_name', 'company.name', 'organization.name', 'account.name', 'visitor.company'),\n    page: pick('page', 'page_url', 'url', 'pageUrl', 'page.url', 'data.page_url', 'subject', 'email_subject'),\n    occurred_at: pick('occurred_at', 'timestamp', 'time', 'created_at', 'date', 'data.occurred_at') || new Date().toISOString(),\n    source: pick('source', 'tool', 'provider'),\n  };\n}\n\nfunction matchEngagement(cfg, event, stateRows, nowInput) {\n  const now = nowInput ? new Date(nowInput) : new Date();\n  const windowDays = Number(cfg.engagement_window_days) || 90;\n  const cooldownHours = Number(cfg.engagement_cooldown_hours) || 24;\n  const label = { web_visit: 'visited your website', email_open: 'opened your email', email_click: 'clicked a link in your email', reply: 'replied to your email' }[event.type];\n  const out = [];\n  for (const s of stateRows || []) {\n    if (lower(s.status) !== 'moved') continue;\n    const byEmail = event.email && lower(s.new_email) && lower(s.new_email) === event.email;\n    const byDomain = !byEmail && event.domain && normDomain(s.new_company_domain) === event.domain;\n    if (!byEmail && !byDomain) continue;\n    // Domain-only matches are account-level: someone at their new company, maybe not them.\n    if (byDomain && event.type !== 'web_visit') continue;\n    const moved = new Date(clean(s.moved_at));\n    if (!isNaN(moved.getTime()) && (now - moved) / 86400000 > windowDays) continue;\n    const last = new Date(clean(s.last_engagement_alert_at));\n    if (!isNaN(last.getTime()) && (now - last) / 3600000 < cooldownHours) continue;\n\n    const name = clean(s.full_name) || clean(s.new_email);\n    const who = byEmail ? name : `Someone from ${clean(s.current_company) || event.domain} (where ${name} works now)`;\n    const days = isNaN(moved.getTime()) ? '' : Math.max(0, Math.floor((now - moved) / 86400000));\n    const ago = days === '' ? '' : days === 0 ? ' today' : days === 1 ? ' yesterday' : ` ${days} days ago`;\n    const mention = clean(s.owner_ae_slack_id) ? `<@${clean(s.owner_ae_slack_id)}>` : clean(s.owner_ae) || 'Team';\n    const page = event.page ? ` (${event.page.slice(0, 120)})` : '';\n    const md = [\n      `:telephone_receiver: *Call now: ${who} just ${label}*${page}`,\n      `${mention}, ${name} moved to *${clean(s.current_company)}*${clean(s.current_title) ? ` as ${clean(s.current_title)}` : ''}${ago}. They're warm right now.`,\n      clean(s.new_email) ? `Email: ${clean(s.new_email)}` : '',\n      clean(s.linkedin_url) ? `<${clean(s.linkedin_url)}|Open LinkedIn>` : '',\n    ].filter(Boolean).join('\\n');\n    const esc = (v) => clean(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\"/g, '&quot;');\n    const html = [\n      `<p><b>Call now: ${esc(who)} just ${label}</b>${esc(page)}</p>`,\n      `<p>${esc(name)} moved to <b>${esc(s.current_company)}</b>${clean(s.current_title) ? ` as ${esc(s.current_title)}` : ''}${ago}. They're warm right now.</p>`,\n      clean(s.new_email) ? `<p>Email: ${esc(s.new_email)}</p>` : '',\n      clean(s.linkedin_url) ? `<p><a href=\"${esc(s.linkedin_url)}\">Open LinkedIn</a></p>` : '',\n    ].filter(Boolean).join('\\n');\n    out.push({\n      alert: {\n        action: 'alert',\n        kind: 'call_now',\n        contact_id: clean(s.contact_id),\n        subject: `Call now: ${who} just ${label}`,\n        text_md: md,\n        html,\n        text_plain: html.replace(/<[^>]+>/g, '').trim(),\n        to_name: clean(s.owner_ae), to_email: clean(s.owner_ae_email), to_slack_id: clean(s.owner_ae_slack_id),\n        cc_name: '', cc_email: '', cc_slack_id: '',\n        priority: 'Hot',\n      },\n      state_update: { contact_id: clean(s.contact_id), last_engagement_alert_at: now.toISOString() },\n      match: byEmail ? 'person' : 'account',\n    });\n  }\n  return out;\n}\n\n// ---- n8n entry ----\nconst event = normalizeEvent($('Webhook').first().json);\nconst state = $input.all().map((i) => i.json).filter((s) => s && s.contact_id);\nconst matches = matchEngagement($('Config').first().json, event, state);\nconsole.log('Engagement event', event, 'matches', matches.length);\nreturn matches.map((json) => ({ json }));"
+      },
+      "id": "2e78f953-02c6-45cb-aeea-205d63672574",
+      "name": "Match Event",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        480,
+        260
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((i) => ({ json: i.json.state_update }));"
+      },
+      "id": "5c4b08f2-f6a3-4954-aa00-2c50ba320f5f",
+      "name": "Alert Times",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "row",
+        "operation": "upsert",
+        "dataTableId": {
+          "__rl": true,
+          "mode": "name",
+          "value": "valari_state"
+        },
+        "matchType": "allConditions",
+        "filters": {
+          "conditions": [
+            {
+              "keyName": "contact_id",
+              "condition": "eq",
+              "keyValue": "={{ $json.contact_id }}"
+            }
+          ]
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [],
+          "schema": []
+        },
+        "options": {}
+      },
+      "id": "cadedce4-a842-48ff-a32b-0fd7dbdf143c",
+      "name": "Save Alert Times",
+      "type": "n8n-nodes-base.dataTable",
+      "typeVersion": 1.1,
+      "position": [
+        960,
+        160
+      ]
+    },
+    {
+      "parameters": {
+        "jsCode": "return $input.all().map((i) => ({ json: i.json.alert }));"
+      },
+      "id": "0d811438-60de-468c-a7c4-d011f1057cab",
+      "name": "Call Now Alerts",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        720,
+        360
+      ]
+    },
+    {
+      "parameters": {
+        "source": "database",
+        "workflowId": {
+          "__rl": true,
+          "mode": "id",
+          "value": "={{ $('Config').first().json.alert_connector_id }}"
+        },
+        "mode": "once",
+        "options": {}
+      },
+      "id": "f8cee2ec-d10b-45b4-a57b-aaa57c8b9eba",
+      "name": "Send Call Now",
+      "type": "n8n-nodes-base.executeWorkflow",
+      "typeVersion": 1.2,
+      "position": [
+        960,
+        360
+      ],
+      "alwaysOutputData": false
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Ensure State Table",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Ensure State Table": {
+      "main": [
+        [
+          {
+            "node": "Read State",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read State": {
+      "main": [
+        [
+          {
+            "node": "Match Event",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Match Event": {
+      "main": [
+        [
+          {
+            "node": "Alert Times",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Call Now Alerts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Alert Times": {
+      "main": [
+        [
+          {
+            "node": "Save Alert Times",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Call Now Alerts": {
+      "main": [
+        [
+          {
+            "node": "Send Call Now",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

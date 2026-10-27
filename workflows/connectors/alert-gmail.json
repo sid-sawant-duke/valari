@@ -1,0 +1,227 @@
+{
+  "name": "Connector: Gmail (alerts)",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Connector: Gmail (alerts and digest)\n\nEmails each alert to the owning rep (cc'ing the champion's AE when someone else owns the new account) and emails the digest.\n\n**Setup:**\n1. Add a Gmail credential to both Gmail nodes.\n2. In **Config**, set `digest_recipients` and a `fallback_recipient` for alerts with no owner email (add rep emails in the core team directory).\n3. Copy this workflow's ID into the core Config as `alert_connector_id`.\n\n**Actions:** alert, digest.\n\nContract: docs/connectors.md in the repo.",
+        "height": 520,
+        "width": 600,
+        "color": 4
+      },
+      "id": "af30550d-d2f5-4a71-a6ed-d2307476bab9",
+      "name": "Note: Setup",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        -560,
+        -360
+      ]
+    },
+    {
+      "parameters": {
+        "inputSource": "passthrough"
+      },
+      "id": "8c0e5fb2-805f-43af-af30-2553ee5a2b44",
+      "name": "When Called by Core",
+      "type": "n8n-nodes-base.executeWorkflowTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        -480,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "12b7707b-64c1-412f-ace4-c559e7c2dbf4",
+              "name": "digest_recipients",
+              "value": "gtm-team@yourcompany.com",
+              "type": "string"
+            },
+            {
+              "id": "d6e5ea3d-4bcf-4093-adf8-e5869ea29a27",
+              "name": "fallback_recipient",
+              "value": "gtm-team@yourcompany.com",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": true,
+        "options": {}
+      },
+      "id": "26c53f93-b0b6-4b9e-a159-dc4e26626cfa",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "952570c0-5a0a-4978-a23c-45e531aac79a",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "alert",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "alert"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 2
+                },
+                "conditions": [
+                  {
+                    "id": "77535d65-c2ba-4164-a8cf-9a37816a7a68",
+                    "leftValue": "={{ $json.action }}",
+                    "rightValue": "digest",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "digest"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "97654542-c699-4560-a66a-5a694da2465a",
+      "name": "Route",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3.2,
+      "position": [
+        0,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.to_email || $json.fallback_recipient }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "ccList": "={{ $json.cc_email }}",
+          "appendAttribution": false
+        }
+      },
+      "id": "22346454-444f-4773-ad5d-1b72793a143a",
+      "name": "Email Owner",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        200
+      ],
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "send",
+        "sendTo": "={{ $json.digest_recipients }}",
+        "subject": "={{ $json.subject }}",
+        "emailType": "html",
+        "message": "={{ $json.html }}",
+        "options": {
+          "appendAttribution": false
+        }
+      },
+      "id": "d0926597-17ed-4c36-a6bf-4cc7f98784d3",
+      "name": "Email Digest",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        260,
+        400
+      ],
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "When Called by Core": {
+      "main": [
+        [
+          {
+            "node": "Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Config": {
+      "main": [
+        [
+          {
+            "node": "Route",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Route": {
+      "main": [
+        [
+          {
+            "node": "Email Owner",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Email Digest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner"
+  },
+  "pinData": {},
+  "meta": {
+    "templateCredsSetupCompleted": false
+  },
+  "tags": []
+}

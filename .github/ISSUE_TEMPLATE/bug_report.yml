@@ -1,0 +1,28 @@
+name: Bug report
+description: Something doesn't work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: What did you expect, and what happened instead? Include the node that failed and its error message.
+    validations:
+      required: true
+  - type: input
+    id: n8n
+    attributes:
+      label: n8n version
+      placeholder: e.g. 2.44.6, self-hosted
+    validations:
+      required: true
+  - type: input
+    id: connectors
+    attributes:
+      label: Connectors in use
+      placeholder: e.g. Salesforce, Gmail, People Data Labs, Slack
+  - type: textarea
+    id: data
+    attributes:
+      label: Example input or output
+      description: Please remove names, emails and other personal data first.
