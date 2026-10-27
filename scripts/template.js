@@ -36,7 +36,7 @@ Nothing is ever sent to a champion automatically. State is kept in n8n Data Tabl
 4. Put a contact ID in **Test Contact**, run **Test One Person**, then publish the workflow (top right).
 
 ### Customize
-- **Personas and scoring:** reward the roles you care about (for example UX researchers) instead of only seniority.
+- **Personas and scoring:** reward the roles you care about (for example data analysts) instead of only seniority.
 - **Any AI model:** swap **Chat Model** for OpenAI, Gemini, Mistral, Ollama and others.
 - **Full version** with a lookup waterfall (Apollo, Clay, People Data Labs), Salesforce, Salesloft and plug-in connectors for any CRM: [GitHub](${REPO}).`, 1);
   b.sticky('Section: Start', [x(-1) - 60, -420], x(3) + 60, W + 400 + 420, '## 1. Triggers and settings\nFour ways in: the daily run, a one-person test, the biweekly digest and the "call now" webhook. They all share **Config**.', 7);

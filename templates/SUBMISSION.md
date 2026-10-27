@@ -52,7 +52,7 @@ B2B sales, customer success and GTM teams who want to know when people who used 
 
 ### How to customize
 
-- **Personas:** reward the roles that matter to you. For example, give UX researchers more points than a VP who never logged in.
+- **Personas:** reward the roles that matter to you. For example, give data analysts more points than a VP who never logged in.
 - **Scoring:** every weight and the Hot / Warm thresholds can be changed in Config.
 - **Opener style:** set house guidelines so every draft sounds the same.
 - **AI model:** swap the Chat Model node for any provider.
