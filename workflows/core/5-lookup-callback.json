@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Valari: Lookup Callback\n\nSome lookup tools answer later instead of right away. **Clay** works this way: Valari sends a person to a Clay table, Clay runs its waterfall, and an HTTP API column posts the result here.\n\nThis workflow saves the result to the lookup cache and immediately re-runs the Daily Run for that person, which picks up the cached answer without spending another credit.\n\n**Setup:**\n1. Add a Header Auth credential on the **Webhook** and use the same header in Clay's HTTP API column.\n2. In **Config**, paste the Daily Run's workflow ID.\n3. Activate, and put the Production URL in the Clay connector's `callback_url`.\n\nSend at least `valari_contact_id` plus the current `company_name`, `company_domain`, `job_title` and (optionally) `job_start_date`, `linkedin_url`, `work_email`.",
+        "content": "## Valari: Lookup Callback\n\nSome lookup tools answer later instead of right away. **Clay** works this way: Valari sends a person to a Clay table, Clay runs its waterfall, and an HTTP API column posts the result here.\n\nThis workflow saves the result to the lookup cache and immediately re-runs the Daily Run for that person, which picks up the cached answer without spending another credit.\n\n**Setup:**\n1. Add a Header Auth credential on the **Webhook** and use the same header in Clay's HTTP API column.\n2. In **Config**, paste the Daily Run's workflow ID.\n3. Publish, and put the Production URL in the Clay connector's `callback_url`.\n\nSend at least `valari_contact_id` plus the current `company_name`, `company_domain`, `job_title` and (optionally) `job_start_date`, `linkedin_url`, `work_email`.",
         "height": 560,
         "width": 600,
         "color": 4

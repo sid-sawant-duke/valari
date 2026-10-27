@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Valari: \"Call now\" alerts\n\nWhen a champion who recently moved **opens your email**, **clicks**, **replies**, or **someone from their new company visits your website**, the rep gets a Slack/email alert to call while they're warm.\n\n**Setup:**\n1. Paste the alert connector's workflow ID into **Config**.\n2. Add a Header Auth credential on the **Webhook** (any name/secret pair your tools can send).\n3. Activate, copy the Production URL, and point your tools at it: your sequencing tool's webhooks (email opened/clicked/replied) and your website visitor tool (RB2B, Warmly, Snitcher, Leadfeeder, Apollo, Clearbit, etc.).\n\nAny JSON with an `email` or a company `domain` works. If a tool names fields differently, the **Match Event** node lists the names it understands.",
+        "content": "## Valari: \"Call now\" alerts\n\nWhen a champion who recently moved **opens your email**, **clicks**, **replies**, or **someone from their new company visits your website**, the rep gets a Slack/email alert to call while they're warm.\n\n**Setup:**\n1. Paste the alert connector's workflow ID into **Config**.\n2. Add a Header Auth credential on the **Webhook** (any name/secret pair your tools can send).\n3. Publish, copy the Production URL, and point your tools at it: your sequencing tool's webhooks (email opened/clicked/replied) and your website visitor tool (RB2B, Warmly, Snitcher, Leadfeeder, Apollo, Clearbit, etc.).\n\nAny JSON with an `email` or a company `domain` works. If a tool names fields differently, the **Match Event** node lists the names it understands.",
         "height": 560,
         "width": 560,
         "color": 4

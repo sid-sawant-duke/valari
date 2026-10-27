@@ -40,7 +40,7 @@ B2B sales, customer success and GTM teams who want to know when people who used 
 2. Add credentials: Google Sheets, Gmail, Slack, your AI model, and a Header Auth credential for Apollo (name `x-api-key`).
 3. Fill in the **Config** node: sheet ID, Slack channel, Apollo monthly budget, a short description of your product and ideal customer, your personas, and a team directory with Slack member IDs for @mentions.
 4. Put a contact ID in **Test Contact**, run **Test One Person**, and check Slack.
-5. Activate the workflow. For "call now" alerts, add a Header Auth credential to the webhook and point your sequencing and website visitor tools at its URL.
+5. Publish the workflow (top right). For "call now" alerts, add a Header Auth credential to the webhook and point your sequencing and website visitor tools at its URL.
 
 ### Requirements
 

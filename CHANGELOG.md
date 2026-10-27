@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0 (2026-10-27)
 
 - **Lookup waterfall**: up to three lookup tools in order; each person goes to the next tool only if the earlier ones couldn't find them.
 - **Apollo connector** (new default lookup): only charges on a match, never requests phone numbers, and its new work email skips the email finder.

@@ -3,7 +3,7 @@
   "nodes": [
     {
       "parameters": {
-        "content": "## Valari: MCP server\n\nLets Claude, ChatGPT, Cursor or any MCP client ask about champion moves and trigger an investigation.\n\n**Setup:**\n1. Run the Daily Run once first (it creates the data tables).\n2. In **investigate_contact**, pick the **Valari: Daily Run** workflow. If **contact_id** is blank, click the AI sparkle next to it.\n3. Add a Bearer Auth credential on the trigger, activate, and add the Production URL to your AI client as a remote MCP server.",
+        "content": "## Valari: MCP server\n\nLets Claude, ChatGPT, Cursor or any MCP client ask about champion moves and trigger an investigation.\n\n**Setup:**\n1. Run the Daily Run once first (it creates the data tables).\n2. In **investigate_contact**, pick the **Valari: Daily Run** workflow. If **contact_id** is blank, click the AI sparkle next to it.\n3. Add a Bearer Auth credential on the trigger, publish, and add the Production URL to your AI client as a remote MCP server.",
         "height": 480,
         "width": 600,
         "color": 4

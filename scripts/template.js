@@ -33,7 +33,7 @@ Nothing is ever sent to a champion automatically. State is kept in n8n Data Tabl
 1. Make a Google Sheet with a **Champions** tab and a **Customers** tab ([template](${REPO}/raw/main/sheet/valari-template.xlsx)).
 2. Add credentials: Google Sheets, Gmail, Slack, your AI model, and a Header Auth credential for Apollo (name \`x-api-key\`).
 3. Fill in **Config**: sheet ID, Slack channel, Apollo monthly budget, product, ICP, personas, team directory.
-4. Put a contact ID in **Test Contact**, run **Test One Person**, then activate the workflow.
+4. Put a contact ID in **Test Contact**, run **Test One Person**, then publish the workflow (top right).
 
 ### Customize
 - **Personas and scoring:** reward the roles you care about (for example UX researchers) instead of only seniority.
