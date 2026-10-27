@@ -3,7 +3,7 @@
 // Pure functions: tested in test/, inlined into the engagement webhook's Code node.
 
 // @node-only-start
-const { clean, lower, normDomain } = require('./shared');
+const { clean, lower, normDomain, mdEsc, safeUrl } = require('./shared');
 // @node-only-end
 
 // Accepts the payload shapes most tools send. Unknown shapes still work if they contain an email or a company domain.
@@ -64,20 +64,21 @@ function matchEngagement(cfg, event, stateRows, nowInput) {
     const who = byEmail ? name : `Someone from ${clean(s.current_company) || event.domain} (where ${name} works now)`;
     const days = isNaN(moved.getTime()) ? '' : Math.max(0, Math.floor((now - moved) / 86400000));
     const ago = days === '' ? '' : days === 0 ? ' today' : days === 1 ? ' yesterday' : ` ${days} days ago`;
-    const mention = clean(s.owner_ae_slack_id) ? `<@${clean(s.owner_ae_slack_id)}>` : clean(s.owner_ae) || 'Team';
-    const page = event.page ? ` (${event.page.slice(0, 120)})` : '';
+    const mention = /^[A-Z0-9]+$/i.test(clean(s.owner_ae_slack_id)) ? `<@${clean(s.owner_ae_slack_id)}>` : mdEsc(clean(s.owner_ae) || 'Team');
+    const page = event.page ? `(${event.page.slice(0, 120)})` : '';
+    const li = safeUrl(s.linkedin_url);
     const md = [
-      `:telephone_receiver: *Call now: ${who} just ${label}*${page}`,
-      `${mention}, ${name} moved to *${clean(s.current_company)}*${clean(s.current_title) ? ` as ${clean(s.current_title)}` : ''}${ago}. They're warm right now.`,
-      clean(s.new_email) ? `Email: ${clean(s.new_email)}` : '',
-      clean(s.linkedin_url) ? `<${clean(s.linkedin_url)}|Open LinkedIn>` : '',
+      `:telephone_receiver: *Call now: ${mdEsc(who)} just ${label}*${page ? ` ${mdEsc(page)}` : ''}`,
+      `${mention}, ${mdEsc(name)} moved to *${mdEsc(s.current_company)}*${clean(s.current_title) ? ` as ${mdEsc(s.current_title)}` : ''}${ago}. They're warm right now.`,
+      clean(s.new_email) ? `Email: ${mdEsc(s.new_email)}` : '',
+      li ? `<${li}|Open LinkedIn>` : '',
     ].filter(Boolean).join('\n');
     const esc = (v) => clean(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     const html = [
-      `<p><b>Call now: ${esc(who)} just ${label}</b>${esc(page)}</p>`,
+      `<p><b>Call now: ${esc(who)} just ${label}</b>${page ? ` ${esc(page)}` : ''}</p>`,
       `<p>${esc(name)} moved to <b>${esc(s.current_company)}</b>${clean(s.current_title) ? ` as ${esc(s.current_title)}` : ''}${ago}. They're warm right now.</p>`,
       clean(s.new_email) ? `<p>Email: ${esc(s.new_email)}</p>` : '',
-      clean(s.linkedin_url) ? `<p><a href="${esc(s.linkedin_url)}">Open LinkedIn</a></p>` : '',
+      li ? `<p><a href="${esc(li)}">Open LinkedIn</a></p>` : '',
     ].filter(Boolean).join('\n');
     out.push({
       alert: {

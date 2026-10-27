@@ -125,16 +125,18 @@ function crmSheets() {
   set(b, 'Map Accounts', [500, 400], Object.fromEntries(['domain', 'company_name', 'relationship', 'owner_ae', 'owner_ae_email', 'owner_ae_slack_id'].map((k) => [k, col(k)])));
   b.connect('Route', 'Read Customers', { output: 1 });
   b.connect('Read Customers', 'Map Accounts');
-  b.code('Move Rows', [260, 640], `return $input.all().map((i) => ({ json: {
+  b.code('Move Rows', [260, 640], `// Values starting with = + - @ would run as spreadsheet formulas, so they are stored as plain text.
+const cell = (v) => { const s = String(v ?? ''); return /^[=+\\-@\\t\\r]/.test(s) ? "'" + s : s; };
+return $input.all().map((i) => ({ json: {
   recorded_at: new Date().toISOString(),
-  contact_id: i.json.contact_id,
-  full_name: i.json.full_name,
-  old_company: i.json.old_company,
-  new_company: i.json.new_company,
-  new_company_domain: i.json.new_company_domain,
-  new_title: i.json.new_title,
-  new_email: i.json.new_email,
-  summary: i.json.task_body,
+  contact_id: cell(i.json.contact_id),
+  full_name: cell(i.json.full_name),
+  old_company: cell(i.json.old_company),
+  new_company: cell(i.json.new_company),
+  new_company_domain: cell(i.json.new_company_domain),
+  new_title: cell(i.json.new_title),
+  new_email: cell(i.json.new_email),
+  summary: cell(i.json.task_body),
 } }));`);
   b.add('Append Move', 'n8n-nodes-base.googleSheets', 4.6, [500, 640], { operation: 'append', documentId: doc, sheetName: tab('moves_tab'), columns: { mappingMode: 'autoMapInputData', value: {}, matchingColumns: [], schema: [] }, options: {} }, { onError: 'continueRegularOutput' });
   b.code('Move Result', [740, 640], `const rows = $('Move Rows').all();
@@ -209,7 +211,7 @@ return { json: { contact_id: $('Build Requests').item.json.contact_id, provider:
 // ------------------------------------------------------------------ Lookup: Clay (async)
 function lookupClay() {
   const b = makeBuilder('conn/lookup-clay');
-  note(b, 'Connector: Clay (lookup, answers later)', `Sends each person to a Clay table, where Clay's waterfall checks its data providers. Clay can't answer right away, so this connector returns **pending**; Clay posts the result to the **Lookup Callback** workflow, which finishes the investigation.\n\nEach person sent counts as one credit against this slot's monthly budget. Valari only sends people the earlier lookup tools couldn't find, and never sends the same person twice within 30 days.\n\n**Setup:**\n1. In Clay, create a table with a **Webhook** source and copy its URL into \`clay_webhook_url\`. If the webhook has an auth token, create a Header Auth credential (name \`x-clay-webhook-auth\`) on **Send to Clay**; otherwise set its authentication to None.\n2. Add your enrichment columns (title, company, company domain, start date, work email).\n3. Add an **HTTP API** column that POSTs \`valari_contact_id\`, \`company_name\`, \`company_domain\`, \`job_title\`, \`job_start_date\`, \`linkedin_url\` and \`work_email\` to the \`callback_url\` sent with each row.\n4. Paste the Lookup Callback's Production URL into \`callback_url\` below.\n5. Copy this workflow's ID into the core Config as \`lookup_2_connector_id\` (slot name \`clay\`).\n\n**Action:** lookup_person.`, 820);
+  note(b, 'Connector: Clay (lookup, answers later)', `Sends each person to a Clay table, where Clay's waterfall checks its data providers. Clay can't answer right away, so this connector returns **pending**; Clay posts the result to the **Lookup Callback** workflow, and the next Daily Run finishes the investigation.\n\nEach person sent counts as one credit against this slot's monthly budget. Valari only sends people the earlier lookup tools couldn't find, and never sends the same person twice within 30 days.\n\n**Setup:**\n1. In Clay, create a table with a **Webhook** source and copy its URL into \`clay_webhook_url\`. If the webhook has an auth token, create a Header Auth credential (name \`x-clay-webhook-auth\`) on **Send to Clay**; otherwise set its authentication to None.\n2. Add your enrichment columns (title, company, company domain, start date, work email).\n3. Add an **HTTP API** column that POSTs \`valari_contact_id\`, \`company_name\`, \`company_domain\`, \`job_title\`, \`job_start_date\`, \`linkedin_url\` and \`work_email\` to the \`callback_url\` sent with each row.\n4. Paste the Lookup Callback's Production URL into \`callback_url\` below.\n5. Copy this workflow's ID into the core Config as \`lookup_2_connector_id\` (slot name \`clay\`).\n\n**Action:** lookup_person.`, 820);
   b.passthroughTrigger('When Called by Core', [-480, 300]);
   b.config('Config', [-240, 300], { clay_webhook_url: 'PASTE_YOUR_CLAY_TABLE_WEBHOOK_URL', callback_url: 'PASTE_YOUR_VALARI_LOOKUP_CALLBACK_URL' }, { includeOther: true });
   b.code('Keep Lookups', [0, 300], "return $input.all().filter((i) => i.json.action === 'lookup_person');");

@@ -74,7 +74,7 @@ Return one item per person:
 | `job_title`, `job_company_name`, `job_company_website`, `job_start_date`, `job_last_verified`, `experience: [{ company, company_website, title, start_date, end_date, is_primary }]` | What the agent reads. Keep it small: it goes into the prompt. |
 | `email`, `email_status` | Optional new work email. If it matches the new company's domain, the email finder is skipped. Never sent to the agent. |
 
-**Tools that answer later** (like Clay): return `{ contact_id, provider, pending: true, credits_used }` right away. When the result is ready, have the tool POST it to the **Lookup Callback** workflow with `valari_contact_id` plus `company_name`, `company_domain`, `job_title` and optionally `job_start_date`, `linkedin_url`, `work_email`. The callback saves it and re-runs the investigation for that person.
+**Tools that answer later** (like Clay): return `{ contact_id, provider, pending: true, credits_used }` right away. When the result is ready, have the tool POST it to the **Lookup Callback** workflow with `valari_contact_id` plus `company_name`, `company_domain`, `job_title` and optionally `job_start_date`, `linkedin_url`, `work_email`. The callback only accepts a result Valari is waiting for, and only once. It saves the result, and the next Daily Run finishes everyone whose answer arrived, in one batch.
 
 ### Email finder (`email_finder_connector_id`)
 

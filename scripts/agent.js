@@ -46,7 +46,7 @@ function addInvestigator(b, from, ax, ay) {
   }, { onError: 'continueRegularOutput' });
   b.add('Chat Model', '@n8n/n8n-nodes-langchain.lmChatAnthropic', 1.3, [ax - 160, ay + 260], { model: { __rl: true, mode: 'id', value: 'claude-haiku-5-5' }, options: { temperature: 0.1 } });
   b.add('Think', '@n8n/n8n-nodes-langchain.toolThink', 1, [ax - 20, ay + 260], { description: 'A scratchpad. Use it to reason through conflicting evidence before you decide the outcome. It does not look anything up.' });
-  b.add('web_search', '@n8n/n8n-nodes-langchain.toolSerpApi', 1, [ax + 120, ay + 260], { options: {} }, { disabled: true, notes: 'Optional. Add a SerpApi credential and enable this node to let the agent search the web.' });
+  b.add('web_search', '@n8n/n8n-nodes-langchain.toolSerpApi', 1, [ax + 120, ay + 260], { options: {} }, { disabled: true, notes: 'Optional. Add a SerpApi credential and enable this node to let the agent search the web. Then set require_lookup_match to false in Config, or moves found only on the web stay [VERIFY].' });
   b.add('Verdict Format', '@n8n/n8n-nodes-langchain.outputParserStructured', 1.2, [ax + 260, ay + 260], { schemaType: 'manual', inputSchema: JSON.stringify(verdictSchema, null, 2) });
   b.connect(from, 'Investigator');
   b.connect('Chat Model', 'Investigator', { kind: 'ai_languageModel' });

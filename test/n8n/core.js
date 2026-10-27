@@ -219,38 +219,47 @@ return [];`));
   assert.strictEqual(state.find((s) => s.contact_id === '003B').status, 'suspect');
   assert.ok(!by['003C'], 'do_not_contact skipped');
 
-  // ---- Lookup Callback: Clay answers for Lee (moved) and Sam (nothing found)
-  const cb = load('core/5-lookup-callback.json'); setConfig(cb, 'Config', { daily_run_workflow_id: dw.id });
-  const waitForCase = async (id) => {
-    for (let i = 0; i < 60; i++) {
-      const c = (await tableRows('valari_cases')).find((x) => x.contact_id === id);
-      if (c) return c;
-      await new Promise((r) => setTimeout(r, 1000));
-    }
-    throw new Error('no case for ' + id + ' after the callback');
+  // ---- Lookup Callback: Clay answers for Lee (moved) and Sam (nothing found); the next Daily Run finishes them
+  const cb = load('core/5-lookup-callback.json');
+  let cbn = 0;
+  const callback = async (body) => {
+    const pin = { Webhook: [{ json: { headers: {}, params: {}, query: {}, body } }] };
+    const w = await createWorkflow({ ...cb, name: `callback ${++cbn}` }, pin);
+    return runWorkflow(w, 'Webhook', pin);
   };
   hits.length = 0;
-  const leePin = { Webhook: [{ json: { headers: {}, params: {}, query: {}, body: { valari_contact_id: 'product:lee@oldco.example', company_name: 'Zeta Labs', company_domain: 'zeta.example', job_title: 'Product Designer', job_start_date: '2026-08', work_email: 'lee@zeta.example' } } }] };
-  const cbw = await createWorkflow({ ...cb, name: 'callback lee' }, leePin);
-  const cbr = await runWorkflow(cbw, 'Webhook', leePin);
+  const leeBody = { valari_contact_id: 'product:lee@oldco.example', company_name: 'Zeta Labs', company_domain: 'zeta.example', job_title: 'Product Designer', job_start_date: '2026-08', work_email: 'lee@zeta.example' };
+  const cbr = await callback(leeBody);
   console.log('\nCALLBACK (Lee):', cbr.status, cbr.error ? cbr.error.message : '');
   assert.strictEqual(cbr.status, 'success');
-  const lee = await waitForCase('product:lee@oldco.example');
-  console.log('  case:', lee.outcome, lee.lookup_source, lee.new_email, lee.score, lee.priority);
-  assert.deepStrictEqual([lee.outcome, lee.lookup_source, lee.new_email], ['confirmed', 'clay', 'lee@zeta.example']);
-  assert.strictEqual(hits.filter((h) => h.path === '/clay').length, 0, 'Clay not asked again');
-  assert.strictEqual(hits.filter((h) => h.path === '/v2/email-finder').length, 0, 'Hunter skipped: Clay found the email');
+  assert.strictEqual(out(cbr.runData, 'Save Lookup Result').length, 1);
+  // a replay, and a callback for someone Valari isn't waiting on, are both ignored
+  const replay = await callback({ ...leeBody, company_name: 'Evil Inc', company_domain: 'evil.example', work_email: 'x@evil.example' });
+  const stranger = await callback({ valari_contact_id: '003A', company_name: 'Evil Inc', company_domain: 'evil.example' });
+  assert.strictEqual(out(replay.runData, 'Normalize Result').length, 0, 'replay ignored');
+  assert.strictEqual(out(stranger.runData, 'Normalize Result').length, 0, 'unexpected callback ignored');
+  await callback({ valari_contact_id: '003B' });
+  let lk = await tableRows('valari_lookups');
+  assert.deepStrictEqual(lk.filter((l) => l.pending === 'READY').map((l) => l.contact_id).sort(), ['003B', 'product:lee@oldco.example']);
+  assert.ok(JSON.parse(lk.find((l) => l.contact_id === 'product:lee@oldco.example').summary_json).job_company_name === 'Zeta Labs', 'replay did not overwrite');
+  console.log('  replay and unexpected callback ignored; 2 answers READY');
 
   hits.length = 0;
-  const samPin = { Webhook: [{ json: { headers: {}, params: {}, query: {}, body: { valari_contact_id: '003B' } } }] };
-  const cbw2 = await createWorkflow({ ...cb, name: 'callback sam' }, samPin);
-  await runWorkflow(cbw2, 'Webhook', samPin);
-  const sam = await waitForCase('003B');
-  console.log('\nCALLBACK (Sam, nothing found):', sam.outcome, '| PDL calls:', hits.filter((h) => h.path === '/v5/person/enrich').length, '| Clay calls:', hits.filter((h) => h.path === '/clay').length, '| Apollo calls:', hits.filter((h) => h.path === '/api/v1/people/match').length);
+  const r2 = await runWorkflow(dw, 'Every Morning');
+  console.log('\nDAILY RUN 2 (finishes READY answers):', r2.status, r2.error ? r2.error.message : '', '| PDL calls:', hits.filter((h) => h.path === '/v5/person/enrich').length, '| Clay calls:', hits.filter((h) => h.path === '/clay').length, '| Apollo calls:', hits.filter((h) => h.path === '/api/v1/people/match').length, '| Hunter:', hits.filter((h) => h.path === '/v2/email-finder').length);
+  assert.strictEqual(r2.status, 'success');
+  const cases2 = await tableRows('valari_cases');
+  const lee = cases2.find((x) => x.contact_id === 'product:lee@oldco.example');
+  const sam = cases2.find((x) => x.contact_id === '003B');
+  console.log('  Lee:', lee && [lee.outcome, lee.lookup_source, lee.new_email, lee.score, lee.priority].join(' '), '| Sam:', sam && sam.outcome);
+  assert.deepStrictEqual([lee.outcome, lee.lookup_source, lee.new_email], ['confirmed', 'clay', 'lee@zeta.example']);
   assert.strictEqual(sam.outcome, 'verify');
-  assert.strictEqual(hits.filter((h) => h.path === '/v5/person/enrich').length, 1, 'falls through to PDL (slot 3)');
+  assert.strictEqual(hits.filter((h) => h.path === '/v5/person/enrich').length, 1, 'Sam falls through to PDL (slot 3)');
   assert.strictEqual(hits.filter((h) => h.path === '/clay').length, 0, 'no loop back to Clay');
   assert.strictEqual(hits.filter((h) => h.path === '/api/v1/people/match').length, 0, 'Apollo stays paused at its budget');
+  assert.strictEqual(hits.filter((h) => h.path === '/v2/email-finder').length, 0, 'Hunter skipped: Clay found the email');
+  lk = await tableRows('valari_lookups');
+  assert.strictEqual(lk.filter((l) => l.pending === 'READY').length, 0, 'READY answers used once');
 
   // ---- Digest
   hits.length = 0;

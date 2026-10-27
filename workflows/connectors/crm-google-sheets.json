@@ -361,7 +361,7 @@
     },
     {
       "parameters": {
-        "jsCode": "return $input.all().map((i) => ({ json: {\n  recorded_at: new Date().toISOString(),\n  contact_id: i.json.contact_id,\n  full_name: i.json.full_name,\n  old_company: i.json.old_company,\n  new_company: i.json.new_company,\n  new_company_domain: i.json.new_company_domain,\n  new_title: i.json.new_title,\n  new_email: i.json.new_email,\n  summary: i.json.task_body,\n} }));"
+        "jsCode": "// Values starting with = + - @ would run as spreadsheet formulas, so they are stored as plain text.\nconst cell = (v) => { const s = String(v ?? ''); return /^[=+\\-@\\t\\r]/.test(s) ? \"'\" + s : s; };\nreturn $input.all().map((i) => ({ json: {\n  recorded_at: new Date().toISOString(),\n  contact_id: cell(i.json.contact_id),\n  full_name: cell(i.json.full_name),\n  old_company: cell(i.json.old_company),\n  new_company: cell(i.json.new_company),\n  new_company_domain: cell(i.json.new_company_domain),\n  new_title: cell(i.json.new_title),\n  new_email: cell(i.json.new_email),\n  summary: cell(i.json.task_body),\n} }));"
       },
       "id": "86960656-65d1-4c04-adde-5a023c7215f3",
       "name": "Move Rows",

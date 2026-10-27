@@ -71,6 +71,7 @@ Nothing is ever sent to a champion automatically. State is kept in n8n Data Tabl
     product_description: 'REPLACE: describe your product in one or two sentences.',
     icp_description: 'REPLACE: describe your ideal customer (company type, size, team).',
     personas: '[]',
+    require_lookup_match: true,
     scoring: '{}',
     team_directory: '{}',
     opener_guidelines: 'Warm and plain. 2 to 4 sentences, under 70 words. Congratulate them, mention what they did with our product before, offer help getting set up. No hard pitch.',
@@ -127,6 +128,16 @@ if (skipped.length) console.log('Skipped this run:', skipped);
 return candidates.map((c) => ({ json: c }));`);
   b.connect('Which Job?', 'Read Champions', { output: 0 });
   b.chain('Read Champions', 'Map Champions', 'Read Customers', 'Map Accounts', 'Read State', 'Read Lookup Cache', 'Read Usage', 'Search Inbox', 'Find Candidates');
+  b.code('Opt-out Rows', [x(9), D + 420], `${inline(S, 'src/core/watchlist.js', 'src/core/find-candidates.js')}
+
+// ---- n8n entry ----
+// Opted-out people who already moved (or are being checked): stop their alerts, including "call now".
+const cfg = $('Config').first().json;
+const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);
+const watchlist = buildWatchlist(cfg, rows('Map Champions'), [], rows('Read State'));
+return optOutRows(watchlist).map((json) => ({ json }));`);
+  b.upsertRows('Save Opt-outs', [x(10), D + 420], TABLES.state);
+  b.chain('Read Usage', 'Opt-out Rows', 'Save Opt-outs');
 
   // ---------------------------------------------------------------- daily: look up (Apollo, with credit guardrails) and investigate
   b.code('Suspect Rows', [x(11), D - 220], `// People with an inbox signal are marked "suspect" first, so a failed run is retried instead of lost.
@@ -253,7 +264,7 @@ return [{ json: buildDigest($('Config').first().json, cases) }];`);
 const event = normalizeEvent($('Engagement Webhook').first().json);
 const state = $input.all().map((i) => i.json).filter((s) => s && s.contact_id);
 const matches = matchEngagement($('Config').first().json, event, state);
-console.log('Engagement event', event, 'matches', matches.length);
+console.log('Engagement event:', event.type, '| matches:', matches.length);
 return matches.map((json) => ({ json }));`);
   b.code('Alert Times', [x(6), W - 100], 'return $input.all().map((i) => ({ json: i.json.state_update }));');
   b.upsertRows('Save Alert Times', [x(7), W - 100], TABLES.state);

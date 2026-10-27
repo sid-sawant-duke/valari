@@ -3,6 +3,11 @@
 const clean = (v) => String(v ?? '').trim();
 const lower = (v) => clean(v).toLowerCase();
 const truthy = (v) => ['true', 'yes', '1', 'y'].includes(lower(v));
+// Slack markdown: escape its three control characters so names, titles, lookup text or AI output
+// can't add links, @channel pings or mentions to an alert.
+const mdEsc = (v) => clean(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+// Only plain http(s) links, with nothing that could break out of a Slack or HTML link (no javascript: or data:).
+const safeUrl = (v) => { const u = clean(v); return /^https?:\/\/[^\s<>|"'`]+$/i.test(u) ? u : ''; };
 
 function parseJson(value, fallback) {
   if (value && typeof value === 'object') return value;
@@ -61,5 +66,5 @@ function resolveOwner(dir, owner, useDefault = true) {
 }
 
 // @node-only-start
-module.exports = { clean, lower, truthy, parseJson, normDomain, splitName, sweepGroupFor, isoDay, loadDirectory, resolveOwner };
+module.exports = { clean, lower, truthy, mdEsc, safeUrl, parseJson, normDomain, splitName, sweepGroupFor, isoDay, loadDirectory, resolveOwner };
 // @node-only-end

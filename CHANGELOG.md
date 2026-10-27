@@ -1,5 +1,18 @@
 # Changelog
 
+## Unreleased
+
+**Security hardening** after a full review:
+
+- The Lookup Callback only accepts a result Valari is waiting for, and only once. Clay answers are finished on the next Daily Run in one batch, which also keeps budgets accurate.
+- A "confirmed" move must match what a lookup tool returned (`require_lookup_match`), so outside text can't talk the AI into a fake move. Draft openers no longer contain links.
+- Slack and email alerts escape every outside value and only use plain http(s) links.
+- Bounces only count when they come from a mail system.
+- `do_not_contact` now also stops "call now" alerts.
+- Google Sheets writes can't run as formulas.
+- CI runs with read-only permissions; Dependabot added; `.env` and key files ignored.
+- New Security notes on guard rails and data retention.
+
 ## 0.3.0 (2026-10-27)
 
 - **Lookup waterfall**: up to three lookup tools in order; each person goes to the next tool only if the earlier ones couldn't find them.

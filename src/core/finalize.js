@@ -3,12 +3,11 @@
 // Pure function: tested in test/, inlined into the "Finalize" Code node.
 
 // @node-only-start
-const { clean, lower, truthy } = require('./shared');
+const { clean, lower, truthy, mdEsc, safeUrl } = require('./shared');
 const { byContact } = require('./actions');
 // @node-only-end
 
 const esc = (s) => clean(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-const mdEsc = (s) => clean(s).replace(/[<>]/g, '');
 
 function finalize(cfg, decisions, emailResults, crmResults, seqResults) {
   const emails = byContact(emailResults);
@@ -27,7 +26,7 @@ function finalize(cfg, decisions, emailResults, crmResults, seqResults) {
     const r = crm.get(id) || {};
     const s = seq.get(id) || {};
     const name = c.full_name || c.work_email;
-    const tag = (slack, nm) => (clean(slack) ? `<@${clean(slack)}>` : mdEsc(nm));
+    const tag = (slack, nm) => (/^[A-Z0-9]+$/i.test(clean(slack)) ? `<@${clean(slack)}>` : mdEsc(nm));
 
     // ---- Status lines for what the connectors did.
     let emailLine = '';
@@ -52,7 +51,7 @@ function finalize(cfg, decisions, emailResults, crmResults, seqResults) {
     let alert = null;
     if (d.notify) {
       const bucketLabel = { customer: 'Existing customer', open_deal: 'Open deal', lost_deal: 'Lost deal (second chance)', net_new: 'Net new account' }[d.bucket] || '';
-      const li = c.linkedin_url;
+      const li = safeUrl(c.linkedin_url);
       const ccNote = d.cc ? ` (cc ${tag(d.cc.slack_id, d.cc.name || d.cc.email)}, who worked with them at ${mdEsc(c.last_company) || 'their last company'})` : '';
       let subject; let md; let html; let plain;
       if (d.outcome === 'confirmed') {
@@ -60,14 +59,14 @@ function finalize(cfg, decisions, emailResults, crmResults, seqResults) {
         subject = `Champion move: ${name} is now at ${d.new_company} (${d.priority}, ${d.score}/100)`;
         md = [
           `:rotating_light: *Champion move: ${mdEsc(name)}* (${d.priority}, ${d.score}/100)`,
-          `${mdEsc(c.last_company) || 'Previous company'} → *${mdEsc(d.new_company)}*${d.new_title ? ` as ${mdEsc(d.new_title)}` : ''}${d.started_new_role ? ` (since ${d.started_new_role})` : ''}`,
+          `${mdEsc(c.last_company) || 'Previous company'} → *${mdEsc(d.new_company)}*${d.new_title ? ` as ${mdEsc(d.new_title)}` : ''}${d.started_new_role ? ` (since ${mdEsc(d.started_new_role)})` : ''}`,
           `${tag(d.owner.slack_id, d.owner.name || d.owner.email) || 'Team'} this one is yours${ccNote}.`,
           `*Fit:* ${fit.join(' · ')}`,
           d.evidence ? `*Why we think so:*\n${mdEsc(d.evidence)}${c.lookup_source ? `\n_Source: ${mdEsc(c.lookup_source)}_` : ''}` : '',
           c.notes ? `*History with us:* ${mdEsc(c.notes)}` : '',
-          emailLine ? `*New email:* ${emailLine}` : '',
-          crmLine ? `*${crmName}:* ${crmLine}` : '',
-          seqLine ? `*Sequence:* ${seqLine}` : '',
+          emailLine ? `*New email:* ${mdEsc(emailLine)}` : '',
+          crmLine ? `*${mdEsc(crmName)}:* ${mdEsc(crmLine)}` : '',
+          seqLine ? `*Sequence:* ${mdEsc(seqLine)}` : '',
           d.draft_opener ? `*Draft opener (edit before sending):*\n${d.draft_opener.split('\n').map((l) => `> ${mdEsc(l)}`).join('\n')}` : '',
           li ? `<${li}|Open LinkedIn>` : '',
         ].filter(Boolean).join('\n');
@@ -89,7 +88,7 @@ function finalize(cfg, decisions, emailResults, crmResults, seqResults) {
           `:mag: *[VERIFY] ${mdEsc(name)} may have left ${mdEsc(c.last_company) || 'their company'}*`,
           `${tag(d.owner.slack_id, d.owner.name || d.owner.email) || 'Team'} we have a signal but could not confirm a new role yet. Can you take a quick look? ${li ? `<${li}|Open LinkedIn>` : 'No LinkedIn URL on file'}`,
           d.evidence ? `*What we found:*\n${mdEsc(d.evidence)}` : '',
-          `I will recheck automatically on ${d.next_check_on}.`,
+          `I will recheck automatically on ${mdEsc(d.next_check_on)}.`,
         ].filter(Boolean).join('\n');
         html = [
           `<p><b>[VERIFY] ${esc(name)} may have left ${esc(c.last_company) || 'their company'}</b></p>`,

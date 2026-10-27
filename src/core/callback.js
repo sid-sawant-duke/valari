@@ -1,5 +1,5 @@
-// Lookup callback: turns a result sent back later by an async lookup tool (Clay) into a cache row,
-// so the next investigation of that person uses it instead of spending another credit.
+// Lookup callback: turns a result sent back later by an async lookup tool (Clay) into a cache row.
+// The next Daily Run picks up every READY row and finishes those investigations without spending another credit.
 // Pure function: tested in test/, inlined into the Lookup Callback workflow.
 
 // @node-only-start
@@ -39,13 +39,17 @@ function normalizeCallback(body, existingRows, nowInput) {
   };
   if (!summary.found) summary.note = `${provider} found no current job for this person. This is not evidence that they moved.`;
   const existing = (existingRows || []).find((r) => clean(r.contact_id) === contactId) || {};
+  // Only accept an answer Valari is waiting for, and only once: a replayed or unexpected callback is ignored,
+  // so it can't overwrite a result, trigger duplicate alerts or point an enrollment at another address.
+  if (lower(existing.pending) !== 'true') return null;
   const tried = parseJson(existing.tried_json, {}) || {};
   tried[provider] = now.toISOString();
   return {
     contact_id: contactId,
     provider,
     found: summary.found ? 'TRUE' : 'FALSE',
-    pending: 'FALSE',
+    // READY: the answer is in; the next Daily Run investigates everyone READY in one batch.
+    pending: 'READY',
     summary_json: JSON.stringify(summary),
     looked_up_at: now.toISOString(),
     tried_json: JSON.stringify(tried),

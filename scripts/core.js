@@ -46,6 +46,7 @@ function dailyRun() {
     product_description: 'REPLACE: describe your product in one or two sentences.',
     icp_description: 'REPLACE: describe your ideal customer (company type, size, team).',
     personas: '[]',
+    require_lookup_match: true,
     scoring: '{}',
     team_directory: '{}',
     opener_guidelines: 'Warm and plain. 2 to 4 sentences, under 70 words. Congratulate them, mention what they did with our product before, offer help getting set up. No hard pitch.',
@@ -84,7 +85,9 @@ const cfg = $('Config').first().json;
 const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);
 const watchlist = buildWatchlist(cfg, rows('Get Watchlist'), rows('Get Product Users'), rows('Read State'));
 const found = findCandidates(cfg, watchlist, rows('Get Signals'));
-const candidates = restoreSignals(cfg, found.candidates, rows('Read Lookup Cache'));
+const restored = restoreSignals(cfg, found.candidates, rows('Read Lookup Cache'));
+// Scheduled runs also finish everyone whose Clay answer arrived since the last run.
+const candidates = cfg.requested_contact_id ? restored : readyCandidates(restored, watchlist, rows('Read Lookup Cache'));
 const skipped = found.skipped;
 console.log(\`Watchlist: \${watchlist.length} people. Investigating \${candidates.length}.\`);
 if (skipped.length) console.log('Skipped this run:', skipped);
@@ -93,6 +96,16 @@ return candidates.map((c) => ({ json: c }));`);
   b.connect('Product Users?', 'Get Product Users', { output: 0 });
   b.connect('Product Users?', 'Read State', { output: 1 });
   b.chain('Get Product Users', 'Read State', 'Read Lookup Cache', 'Read Usage', 'Signals Request', 'Signals?');
+  b.code('Opt-out Rows', [x(7) - 120, y0 + 680], `${inline(S, 'src/core/watchlist.js', 'src/core/find-candidates.js')}
+
+// ---- n8n entry ----
+// Opted-out people who already moved (or are being checked): stop their alerts, including "call now".
+const cfg = $('Config').first().json;
+const rows = (name) => ($(name).isExecuted ? $(name).all().map((i) => i.json).filter((j) => j && Object.keys(j).length) : []);
+const watchlist = buildWatchlist(cfg, rows('Get Watchlist'), rows('Get Product Users'), rows('Read State'));
+return optOutRows(watchlist).map((json) => ({ json }));`);
+  b.upsertRows('Save Opt-outs', [x(8), y0 + 680], TABLES.state);
+  b.chain('Read Usage', 'Opt-out Rows', 'Save Opt-outs');
   b.connect('Signals?', 'Get Signals', { output: 0 });
   b.connect('Signals?', 'Find Candidates', { output: 1 });
   b.connect('Get Signals', 'Find Candidates');
@@ -265,7 +278,7 @@ function engagement() {
 const event = normalizeEvent($('Webhook').first().json);
 const state = $input.all().map((i) => i.json).filter((s) => s && s.contact_id);
 const matches = matchEngagement($('Config').first().json, event, state);
-console.log('Engagement event', event, 'matches', matches.length);
+console.log('Engagement event:', event.type, '| matches:', matches.length);
 return matches.map((json) => ({ json }));`);
   b.code('Alert Times', [720, 160], 'return $input.all().map((i) => ({ json: i.json.state_update }));');
   b.upsertRows('Save Alert Times', [960, 160], TABLES.state);
@@ -307,9 +320,8 @@ function mcp() {
 // ------------------------------------------------------------------ Lookup callback (async lookups such as Clay)
 function lookupCallback() {
   const b = makeBuilder('core/lookup-callback');
-  b.sticky('Note: Callback', [-560, -360], 600, 560, `## Valari: Lookup Callback\n\nSome lookup tools answer later instead of right away. **Clay** works this way: Valari sends a person to a Clay table, Clay runs its waterfall, and an HTTP API column posts the result here.\n\nThis workflow saves the result to the lookup cache and immediately re-runs the Daily Run for that person, which picks up the cached answer without spending another credit.\n\n**Setup:**\n1. Add a Header Auth credential on the **Webhook** and use the same header in Clay's HTTP API column.\n2. In **Config**, paste the Daily Run's workflow ID.\n3. Publish, and put the Production URL in the Clay connector's \`callback_url\`.\n\nSend at least \`valari_contact_id\` plus the current \`company_name\`, \`company_domain\`, \`job_title\` and (optionally) \`job_start_date\`, \`linkedin_url\`, \`work_email\`.`, 4);
+  b.sticky('Note: Callback', [-560, -360], 600, 560, `## Valari: Lookup Callback\n\nSome lookup tools answer later instead of right away. **Clay** works this way: Valari sends a person to a Clay table, Clay runs its waterfall, and an HTTP API column posts the result here.\n\nThis workflow saves the result to the lookup cache. The next **Daily Run** finishes those investigations in one batch, without spending another credit.\n\nIt only accepts an answer Valari is waiting for, and only once, so a replayed or unexpected call is ignored.\n\n**Setup:**\n1. Add a Header Auth credential on the **Webhook** and use the same header in Clay's HTTP API column.\n2. Publish, and put the Production URL in the Clay connector's \`callback_url\`.\n\nSend at least \`valari_contact_id\` plus the current \`company_name\`, \`company_domain\`, \`job_title\` and (optionally) \`job_start_date\`, \`linkedin_url\`, \`work_email\`.`, 4);
   b.add('Webhook', 'n8n-nodes-base.webhook', 2, [-480, 300], { httpMethod: 'POST', path: 'valari-lookup-callback', authentication: 'headerAuth', responseMode: 'onReceived', options: {} }, { webhookId: uid('core/lookup-callback/webhook') });
-  b.config('Config', [-240, 300], { daily_run_workflow_id: '' });
   b.ensureTable('Ensure Lookups Table', [0, 300], TABLES.lookups);
   b.readTable('Read Lookup Cache', [240, 300], TABLES.lookups);
   b.code('Normalize Result', [480, 300], `${inline(S, 'src/core/callback.js')}
@@ -317,25 +329,10 @@ function lookupCallback() {
 // ---- n8n entry ----
 const existing = $input.all().map((i) => i.json).filter((r) => r && r.contact_id);
 const row = normalizeCallback($('Webhook').first().json, existing);
-if (!row) { console.log('Callback without valari_contact_id, ignored'); return []; }
+if (!row) { console.log('Callback ignored: no valari_contact_id, or Valari was not waiting for this result'); return []; }
 return [{ json: row }];`);
   b.upsertRows('Save Lookup Result', [720, 300], TABLES.lookups);
-  b.code('Contact To Investigate', [960, 300], "return [{ json: { contact_id: $('Normalize Result').first().json.contact_id } }];");
-  b.add('Investigate Now', 'n8n-nodes-base.executeWorkflow', 1.2, [1200, 300], {
-    source: 'database',
-    workflowId: { __rl: true, mode: 'id', value: "={{ $('Config').first().json.daily_run_workflow_id }}" },
-    workflowInputs: {
-      mappingMode: 'defineBelow',
-      value: { contact_id: '={{ $json.contact_id }}' },
-      matchingColumns: [],
-      schema: [{ id: 'contact_id', displayName: 'contact_id', required: false, defaultMatch: false, display: true, canBeUsedToMatch: true, type: 'string', removed: false }],
-      attemptToConvertTypes: false,
-      convertFieldsToString: true,
-    },
-    mode: 'each',
-    options: { waitForSubWorkflow: false },
-  });
-  b.chain('Webhook', 'Config', 'Ensure Lookups Table', 'Read Lookup Cache', 'Normalize Result', 'Save Lookup Result', 'Contact To Investigate', 'Investigate Now');
+  b.chain('Webhook', 'Ensure Lookups Table', 'Read Lookup Cache', 'Normalize Result', 'Save Lookup Result');
   return b.workflow('Valari: Lookup Callback');
 }
 

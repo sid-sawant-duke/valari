@@ -109,7 +109,7 @@ The full walkthrough, using Salesforce, Salesloft, Gmail and Slack as the exampl
 Valari tries up to three lookup tools in the order you choose and stops as soon as one finds the person's current job. A common setup:
 
 1. **Apollo**, which most GTM teams already pay for. It only charges when it finds someone, and Valari never asks it for phone numbers.
-2. **Clay**, only for people Apollo couldn't find. Clay runs its own waterfall across many data providers and sends the answer back to Valari's **Lookup Callback** a few minutes later.
+2. **Clay**, only for people Apollo couldn't find. Clay runs its own waterfall across many data providers and sends the answer back to Valari's **Lookup Callback**. The next Daily Run finishes those people.
 3. **People Data Labs** as a cheap final fallback.
 
 Guardrails so a run can't drain an account:

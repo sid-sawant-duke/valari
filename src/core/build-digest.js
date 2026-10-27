@@ -2,7 +2,7 @@
 // Pure function: tested in test/, inlined into the "Build Digest" Code node.
 
 // @node-only-start
-const { clean, lower } = require('./shared');
+const { clean, lower, mdEsc, safeUrl } = require('./shared');
 // @node-only-end
 
 function buildDigest(cfg, cases, nowInput) {
@@ -30,7 +30,7 @@ function buildDigest(cfg, cases, nowInput) {
   const bucketLabel = { customer: 'Existing customer', open_deal: 'Open deal', lost_deal: 'Lost deal', net_new: 'Net new' };
   const th = 'style="text-align:left;padding:8px;border-bottom:2px solid #1f2937;font-size:13px"';
   const td = 'style="padding:8px;border-bottom:1px solid #e5e7eb;font-size:13px;vertical-align:top"';
-  const link = (url, label) => (clean(url) ? `<a href="${esc(url)}">${esc(label)}</a>` : '');
+  const link = (url, label) => (safeUrl(url) ? `<a href="${esc(safeUrl(url))}">${esc(label)}</a>` : '');
   const title = clean(cfg.digest_title) || 'Champion moves';
   const range = `${fmt(since)} to ${fmt(now)}`;
   const subject = `${title}: ${confirmed.length} confirmed, ${verify.length} to verify (${range})`;
@@ -50,14 +50,14 @@ ${verify.length ? `<ul style="font-size:13px;padding-left:18px">${verify.map((c)
 </div>`;
 
   const md = [
-    `*${title}* (${range})`,
+    `*${mdEsc(title)}* (${range})`,
     funnel,
     '',
     `*Confirmed moves (${confirmed.length})*`,
-    ...(confirmed.length ? confirmed.map((c) => `• ${c.priority} ${c.score}: *${clean(c.full_name)}* ${clean(c.old_company)} → *${clean(c.new_company)}*${c.new_title ? `, ${clean(c.new_title)}` : ''}${c.persona ? ` (${clean(c.persona)})` : ''} · ${clean(c.owner_ae) || 'unassigned'}`) : ['No confirmed moves.']),
+    ...(confirmed.length ? confirmed.map((c) => `• ${mdEsc(c.priority)} ${mdEsc(c.score)}: *${mdEsc(c.full_name)}* ${mdEsc(c.old_company)} → *${mdEsc(c.new_company)}*${c.new_title ? `, ${mdEsc(c.new_title)}` : ''}${c.persona ? ` (${mdEsc(c.persona)})` : ''} · ${mdEsc(c.owner_ae) || 'unassigned'}`) : ['No confirmed moves.']),
     '',
     `*Needs a manual check [VERIFY] (${verify.length})*`,
-    ...(verify.length ? verify.map((c) => `• ${clean(c.full_name)} (${clean(c.old_company)}) · ${clean(c.owner_ae) || 'unassigned'}${c.linkedin_url ? ` · <${clean(c.linkedin_url)}|LinkedIn>` : ''}`) : ['Nothing waiting.']),
+    ...(verify.length ? verify.map((c) => `• ${mdEsc(c.full_name)} (${mdEsc(c.old_company)}) · ${mdEsc(c.owner_ae) || 'unassigned'}${safeUrl(c.linkedin_url) ? ` · <${safeUrl(c.linkedin_url)}|LinkedIn>` : ''}`) : ['Nothing waiting.']),
   ].join('\n');
 
   return { action: 'digest', subject, html, text_md: md, confirmed: confirmed.length, verify: verify.length, checked: rows.length, enrolled, meetings };

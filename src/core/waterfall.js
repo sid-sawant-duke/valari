@@ -153,6 +153,10 @@ function collectLookups(cfg, candidates, cacheRows, usageRows, slotResults, nowI
       });
     }
 
+    // A READY row (async answer that arrived) has now been used: mark it done so it isn't picked up again.
+    if (!results.length && row && lower(row.pending) === 'ready') {
+      cacheOut.push({ contact_id: c.contact_id, provider: clean(row.provider), found: clean(row.found), pending: 'FALSE', summary_json: clean(row.summary_json), looked_up_at: clean(row.looked_up_at), tried_json: clean(row.tried_json), signal_json: clean(row.signal_json) });
+    }
     if (waiting) { pending.push(c.contact_id); continue; }
     if (!chosen) {
       // Nothing resolved it: give the agent the best we have, so it can say [VERIFY] with evidence.

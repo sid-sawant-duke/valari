@@ -43,7 +43,10 @@ function findCandidates(cfg, champions, messages, nowInput) {
     const blob = [subject, fromBlob, JSON.stringify(m.headers ?? {}), clean(m.text) || clean(m.snippet)].join('\n');
     const found = new Set((blob.match(emailRe) || []).map((e) => e.toLowerCase()));
     if (!found.size) continue;
-    const isBounce = bounceRe.test(subject) || bounceRe.test(fromBlob);
+    // A bounce must come from a mail system (mailer-daemon or postmaster), so anyone can't email
+    // "Undeliverable: ..." and make Valari spend lookup credits on a person who didn't leave.
+    const fromMailSystem = /mailer-daemon|postmaster/i.test(fromBlob);
+    const isBounce = fromMailSystem && (bounceRe.test(subject) || bounceRe.test(fromBlob));
     const isLeft = !isBounce && leftRe.test(blob);
     if (!isBounce && !isLeft) continue;
     const fromEmails = new Set((fromBlob.match(emailRe) || []).map((e) => e.toLowerCase()));
@@ -103,6 +106,30 @@ function restoreSignals(cfg, candidates, cacheRows, nowInput) {
   });
 }
 
+// People whose async lookup (Clay) answered since the last run. They are added on top of the per-run cap,
+// since their lookup is already paid for, and keep the signal that started the lookup.
+function readyCandidates(candidates, watchlist, cacheRows) {
+  const have = new Set((candidates || []).map((c) => c.contact_id));
+  const out = [...(candidates || [])];
+  for (const r of cacheRows || []) {
+    if (!r || lower(r.pending) !== 'ready' || have.has(clean(r.contact_id))) continue;
+    const c = (watchlist || []).find((p) => p.contact_id === clean(r.contact_id));
+    if (!c || truthy(c.do_not_contact) || ['moved', 'inactive'].includes(c.status)) continue;
+    const saved = parseJson(r.signal_json, null) || {};
+    out.push({ ...c, trigger: saved.trigger || 'retry', signal: saved.signal || 'lookup_answer', signal_evidence: clean(saved.signal_evidence), signal_date: clean(saved.signal_date) });
+    have.add(c.contact_id);
+  }
+  return out;
+}
+
+// People marked do_not_contact who are still tracked: their state becomes "opted_out", so "call now" alerts
+// (which only fire for "moved") stop too. Removing the flag later makes them eligible again.
+function optOutRows(watchlist) {
+  return (watchlist || [])
+    .filter((c) => truthy(c.do_not_contact) && c.status && !['active', 'opted_out'].includes(c.status))
+    .map((c) => ({ contact_id: c.contact_id, full_name: c.full_name, status: 'opted_out' }));
+}
+
 // @node-only-start
-module.exports = { findCandidates, restoreSignals };
+module.exports = { findCandidates, restoreSignals, readyCandidates, optOutRows };
 // @node-only-end

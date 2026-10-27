@@ -4,7 +4,7 @@ const { planSlot, collectLookups, isResolved } = require('../src/core/waterfall'
 const { normalizeCallback } = require('../src/core/callback');
 const { apolloMatchBody, summarizeApollo } = require('../src/connectors/apollo');
 const { emailRequests, lookupEmailResults } = require('../src/core/actions');
-const { restoreSignals } = require('../src/core/find-candidates');
+const { restoreSignals, readyCandidates } = require('../src/core/find-candidates');
 
 const NOW = '2026-10-22T12:00:00Z';
 const cfg = {
@@ -88,16 +88,26 @@ test('collectLookups: a fresh cached answer is reused without spending credits',
   assert.strictEqual(out.cache_rows.length, 0);
 });
 
-test('Clay callback becomes a cache row the next run can use', () => {
-  const row = normalizeCallback({ body: { valari_contact_id: 'b', company_name: 'Zeta Labs', company_domain: 'https://www.zeta.example', job_title: 'Product Designer', work_email: 'B@zeta.example' } }, [{ contact_id: 'b', tried_json: JSON.stringify({ apollo: '2026-10-21T00:00:00Z' }) }], NOW);
+test('Clay callback is accepted once, only while waiting, and the next run picks it up', () => {
+  const waiting = [{ contact_id: 'b', pending: 'TRUE', tried_json: JSON.stringify({ apollo: '2026-10-21T00:00:00Z' }) }];
+  const body = { body: { valari_contact_id: 'b', company_name: 'Zeta Labs', company_domain: 'https://www.zeta.example', job_title: 'Product Designer', work_email: 'B@zeta.example' } };
+  const row = normalizeCallback(body, waiting, NOW);
   assert.strictEqual(row.contact_id, 'b');
-  assert.strictEqual(row.pending, 'FALSE');
+  assert.strictEqual(row.pending, 'READY');
   const s = JSON.parse(row.summary_json);
   assert.deepStrictEqual([s.found, s.provider, s.job_company_website, s.email], [true, 'clay', 'zeta.example', 'b@zeta.example']);
   assert.deepStrictEqual(Object.keys(JSON.parse(row.tried_json)).sort(), ['apollo', 'clay']);
-  const out = collectLookups(cfg, [person('b', { trigger: 'manual' })], [row], [], [[], [], []], NOW);
+  // replays and unexpected callbacks are ignored
+  assert.strictEqual(normalizeCallback(body, [row], NOW), null, 'replay after the answer arrived');
+  assert.strictEqual(normalizeCallback(body, [], NOW), null, 'nobody was waiting');
+  assert.strictEqual(normalizeCallback({ company_name: 'X' }, waiting, NOW), null, 'no contact id');
+  // the next scheduled run adds READY people on top of its own candidates
+  const watch = [person('b', { status: 'suspect' }), person('z', { status: 'moved' })];
+  const cands = readyCandidates([], watch, [row, { contact_id: 'z', pending: 'READY' }]);
+  assert.deepStrictEqual(cands.map((c) => [c.contact_id, c.trigger]), [['b', 'retry']], 'moved people are not picked up again');
+  const out = collectLookups(cfg, cands, [row], [], [[], [], []], NOW);
   assert.strictEqual(out.briefs[0].lookup_source, 'clay');
-  assert.strictEqual(normalizeCallback({ company_name: 'X' }, [], NOW), null);
+  assert.deepStrictEqual(out.cache_rows.map((r) => [r.contact_id, r.pending]), [['b', 'FALSE']], 'used once, then done');
 });
 
 test('Apollo request never asks for phone numbers, and the response maps to the standard shape', () => {

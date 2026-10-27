@@ -43,12 +43,12 @@ Create a **Header Auth** credential on **Apollo Request**: name `x-api-key`, val
 
 ### Clay (lookup 2, optional)
 
-Clay is asked only about people Apollo couldn't find. It answers a few minutes later, so it needs the **Lookup Callback** workflow:
+Clay is asked only about people Apollo couldn't find. It answers later, so it needs the **Lookup Callback** workflow. Answers that arrive are finished on the next Daily Run:
 
 1. In Clay, create a table with a **Webhook** source. Paste its URL into the Clay connector's `clay_webhook_url`. If the webhook has an auth token, add it as a Header Auth credential (name `x-clay-webhook-auth`) on **Send to Clay**.
 2. Add enrichment columns for current title, company, company domain, start date and work email (Clay's own waterfall picks the providers).
 3. Add an **HTTP API** column that POSTs `valari_contact_id`, `company_name`, `company_domain`, `job_title`, `job_start_date`, `linkedin_url` and `work_email` to the row's `callback_url`, with the header you set on the Lookup Callback's webhook.
-4. In the **Lookup Callback** workflow: add a Header Auth credential on the Webhook, paste the Daily Run's workflow ID into **Config**, publish it, and copy its Production URL into the Clay connector's `callback_url`.
+4. In the **Lookup Callback** workflow: add a Header Auth credential on the Webhook, publish it, and copy its Production URL into the Clay connector's `callback_url`.
 
 ### People Data Labs (optional fallback)
 

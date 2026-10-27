@@ -28,6 +28,7 @@ Paste each connector's workflow ID, which is the last part of its URL: `/workflo
 | `budget_warning_percent` | `80` | Sends one alert per tool per month when its usage crosses this share of its budget. |
 | `lookup_cache_days` | `14` | Reuse a lookup result for this long instead of paying again. |
 | `lookup_repeat_days` | `30` | Don't ask a tool about the same person again within this many days after it found nothing (or while it's still working on them). |
+| `require_lookup_match` | `true` | A "confirmed" move must name a company that a lookup tool actually returned; otherwise it becomes [VERIFY]. This stops text in emails or notes from talking the AI into a fake move. Set to `false` only if you enable the agent's web search tool. |
 
 Usage is tracked per month in the `valari_usage` data table, and results in `valari_lookups` (with the signal that started each lookup, so a Clay answer that arrives later is judged against the same bounce or auto-reply).
 

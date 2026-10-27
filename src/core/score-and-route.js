@@ -74,6 +74,19 @@ function scoreAndRoute(cfg, candidate, verdictInput, accounts, nowInput) {
   if (outcome === 'confirmed' && (sideRole || sameCompany || !newCompany)) outcome = 'verify';
   // A signal the data can't confirm yet stays open as [verify] until the profile updates or an AE closes it.
   if (outcome === 'no_change' && ['signal', 'recheck', 'retry'].includes(candidate.trigger)) outcome = 'verify';
+  // The agent reads text from outside (bounce emails, lookup data, CRM notes), so a "confirmed" must match
+  // what a lookup tool actually returned. Set require_lookup_match to false if you enable the web search tool.
+  if (outcome === 'confirmed' && lower(cfg.require_lookup_match) !== 'false' && clean(candidate.lookup_json)) {
+    const lk = parseJson(candidate.lookup_json, {}) || {};
+    const names = [lk.job_company_name, ...(Array.isArray(lk.experience) ? lk.experience.map((x) => x && x.company) : [])].map(lower).filter(Boolean);
+    const domains = [lk.job_company_website, ...(Array.isArray(lk.experience) ? lk.experience.map((x) => x && x.company_website) : [])].map(normDomain).filter(Boolean);
+    const nc = lower(newCompany);
+    const grounded = (newDomain && domains.includes(newDomain)) || names.some((n) => n === nc || n.startsWith(`${nc} `) || nc.startsWith(`${n} `));
+    if (!grounded) {
+      outcome = 'verify';
+      evidence = [evidence, `- The AI named ${newCompany}, but no lookup result shows that company, so a person should check.`].filter(Boolean).join('\n');
+    }
+  }
   if (candidate.signal_evidence && !evidence.includes(candidate.signal_evidence)) {
     evidence = [`- ${candidate.signal_evidence}`, evidence].filter(Boolean).join('\n');
   }
@@ -129,12 +142,13 @@ function scoreAndRoute(cfg, candidate, verdictInput, accounts, nowInput) {
 
   return {
     candidate,
-    outcome, confidence, side_role: sideRole, icp_fit: icp, evidence,
+    outcome, confidence, side_role: sideRole, icp_fit: icp, evidence: evidence.slice(0, 1500),
     new_company: outcome === 'confirmed' ? newCompany : '',
     new_company_domain: outcome === 'confirmed' ? newDomain : '',
     new_title: outcome === 'confirmed' ? newTitle : '',
     started_new_role: outcome === 'confirmed' ? started : '',
-    draft_opener: outcome === 'confirmed' ? clean(v.draft_opener) : '',
+    // No links in the draft: a rep might send it as-is, and the text can be steered by outside data.
+    draft_opener: outcome === 'confirmed' ? clean(v.draft_opener).replace(/\b(?:https?:\/\/|www\.)\S+/gi, '').replace(/[ \t]{2,}/g, ' ').slice(0, 800).trim() : '',
     bucket,
     crm_account_id: account ? clean(account.crm_account_id) : '',
     persona: persona.name,
