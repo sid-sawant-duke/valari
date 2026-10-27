@@ -37,13 +37,13 @@
             {
               "id": "12b7707b-64c1-412f-ace4-c559e7c2dbf4",
               "name": "digest_recipients",
-              "value": "gtm-team@yourcompany.com",
+              "value": "gtm-team@yourcompany.example",
               "type": "string"
             },
             {
               "id": "d6e5ea3d-4bcf-4093-adf8-e5869ea29a27",
               "name": "fallback_recipient",
-              "value": "gtm-team@yourcompany.com",
+              "value": "gtm-team@yourcompany.example",
               "type": "string"
             }
           ]

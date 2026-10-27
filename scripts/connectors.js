@@ -333,7 +333,7 @@ function alertGmail() {
   const b = makeBuilder('conn/alert-gmail');
   note(b, 'Connector: Gmail (alerts and digest)', `Emails each alert to the owning rep (cc'ing the champion's AE when someone else owns the new account) and emails the digest.\n\n**Setup:**\n1. Add a Gmail credential to both Gmail nodes.\n2. In **Config**, set \`digest_recipients\` and a \`fallback_recipient\` for alerts with no owner email (add rep emails in the core team directory).\n3. Copy this workflow's ID into the core Config as \`alert_connector_id\`.\n\n**Actions:** alert, digest.`);
   b.passthroughTrigger('When Called by Core', [-480, 300]);
-  b.config('Config', [-240, 300], { digest_recipients: 'gtm-team@yourcompany.com', fallback_recipient: 'gtm-team@yourcompany.com' }, { includeOther: true });
+  b.config('Config', [-240, 300], { digest_recipients: 'gtm-team@yourcompany.example', fallback_recipient: 'gtm-team@yourcompany.example' }, { includeOther: true });
   b.route('Route', [0, 300], ['alert', 'digest']);
   b.add('Email Owner', 'n8n-nodes-base.gmail', 2.1, [260, 200], { resource: 'message', operation: 'send', sendTo: '={{ $json.to_email || $json.fallback_recipient }}', subject: '={{ $json.subject }}', emailType: 'html', message: '={{ $json.html }}', options: { ccList: '={{ $json.cc_email }}', appendAttribution: false } }, { onError: 'continueRegularOutput' });
   b.add('Email Digest', 'n8n-nodes-base.gmail', 2.1, [260, 400], { resource: 'message', operation: 'send', sendTo: '={{ $json.digest_recipients }}', subject: '={{ $json.subject }}', emailType: 'html', message: '={{ $json.html }}', options: { appendAttribution: false } }, { onError: 'continueRegularOutput' });

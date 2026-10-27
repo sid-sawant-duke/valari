@@ -101,9 +101,9 @@ test('Clay callback becomes a cache row the next run can use', () => {
 });
 
 test('Apollo request never asks for phone numbers, and the response maps to the standard shape', () => {
-  const body = apolloMatchBody(person('a', { linkedin_url: 'https://linkedin.com/in/a' }));
+  const body = apolloMatchBody(person('a', { linkedin_url: 'https://linkedin.com/in/example-a' }));
   assert.strictEqual(body.reveal_phone_number, false);
-  assert.strictEqual(body.linkedin_url, 'https://linkedin.com/in/a');
+  assert.strictEqual(body.linkedin_url, 'https://linkedin.com/in/example-a');
   const s = summarizeApollo({ person: { name: 'Pat A', title: 'Product Designer', email: 'pat@acme.example', email_status: 'verified', organization: { name: 'Acme', primary_domain: 'acme.example' }, employment_history: [{ organization_name: 'OldCo', title: 'Designer', start_date: '2021-01-01', end_date: '2026-08-01', current: false }, { organization_name: 'Acme', title: 'Product Designer', start_date: '2026-09-01', current: true }] } });
   assert.deepStrictEqual([s.found, s.credits_used, s.job_company_name, s.job_company_website, s.job_start_date, s.experience[0].company], [true, 1, 'Acme', 'acme.example', '2026-09-01', 'Acme']);
   assert.strictEqual(summarizeApollo({ person: null }).found, false);

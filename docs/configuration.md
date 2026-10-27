@@ -89,9 +89,9 @@ Fills in owner details the CRM doesn't have, such as Slack member IDs for @menti
 
 ```json
 {
-  "priya@yourcompany.com": { "name": "Priya Shah", "slack_id": "U01ABCDEF", "salesloft_user_id": "1234" },
-  "005Dn000001XyZq":       { "name": "Marcus Lee", "email": "marcus@yourcompany.com", "slack_id": "U02GHIJKL" },
-  "default":               { "name": "SDR queue", "email": "sdr@yourcompany.com", "slack_id": "S03MNOPQR" }
+  "priya@yourcompany.example": { "name": "Priya Shah", "slack_id": "U01ABCDEF", "salesloft_user_id": "1234" },
+  "005Dn000001XyZq":       { "name": "Marcus Lee", "email": "marcus@yourcompany.example", "slack_id": "U02GHIJKL" },
+  "default":               { "name": "SDR queue", "email": "sdr@yourcompany.example", "slack_id": "S03MNOPQR" }
 }
 ```
 

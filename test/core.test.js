@@ -21,12 +21,12 @@ const cfg = {
 };
 
 const crmRows = [
-  { contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', work_email: 'Jordan.Avery@northwind.example', linkedin_url: 'https://linkedin.com/in/ja', last_company: 'Northwind', last_company_domain: 'https://www.northwind.example', last_title: 'Senior UX Researcher', role_type: 'champion', owner_ae_email: 'priya@us.example', notes: 'Ran the research repository rollout.' },
+  { contact_id: '003A', first_name: 'Jordan', last_name: 'Avery', work_email: 'Jordan.Avery@northwind.example', linkedin_url: 'https://linkedin.com/in/example-ja', last_company: 'Northwind', last_company_domain: 'https://www.northwind.example', last_title: 'Senior UX Researcher', role_type: 'champion', owner_ae_email: 'priya@us.example', notes: 'Ran the research repository rollout.' },
   { contact_id: '003B', full_name: 'Sam Okafor', work_email: 'sam@brightcart.example', last_company: 'Brightcart', role_type: 'Buyer', owner_crm_id: '005MARCUS' },
   { contact_id: '003C', full_name: 'Riley Chen', work_email: 'riley@harbor.example', last_company: 'Harbor', do_not_contact: true },
 ];
 const productRows = [
-  { work_email: 'sam@brightcart.example', linkedin_url: 'https://linkedin.com/in/sam', last_title: 'Product Designer' },
+  { work_email: 'sam@brightcart.example', linkedin_url: 'https://linkedin.com/in/example-sam', last_title: 'Product Designer' },
   { work_email: 'ana@lumen.example', full_name: 'Ana Ruiz', last_company: 'Lumen', role_type: 'user' },
 ];
 const stateRows = [{ contact_id: 'product:ana@lumen.example', status: 'verify', next_check_on: '2026-10-01' }];
@@ -44,7 +44,7 @@ test('watchlist merges CRM, product users and state, and resolves owners from th
   assert.ok(['1', '2', '3'].includes(jordan.sweep_group));
   const sam = w.find((c) => c.contact_id === '003B');
   assert.strictEqual(sam.role_type, 'buyer');
-  assert.strictEqual(sam.linkedin_url, 'https://linkedin.com/in/sam', 'product list fills gaps');
+  assert.strictEqual(sam.linkedin_url, 'https://linkedin.com/in/example-sam', 'product list fills gaps');
   assert.strictEqual(sam.source, 'crm+product');
   assert.strictEqual(sam.owner_ae, 'Marcus Lee');
   const ana = w.find((c) => c.work_email === 'ana@lumen.example');
